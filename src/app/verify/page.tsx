@@ -2,7 +2,8 @@
 
 import AuthCard from "@/components/AuthCard";
 import OtpInput from "@/components/OtpInput";
-import { useSearchParams } from "next/navigation";
+import { showError, showSuccess } from "@/lib/toast";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 
 export default function VerifyPage() {
@@ -11,10 +12,14 @@ export default function VerifyPage() {
   const [timer, setTimer] = useState(60);
   const [resendLoading, setResendLoading] = useState(false);
 
+  const router = useRouter()
+
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "";
   useEffect(() => {
     if (timer === 0) return;
+
+    if (timer > 0) return;
 
     const interval = setInterval(() => {
       setTimer((prev) => prev - 1);
@@ -39,16 +44,17 @@ export default function VerifyPage() {
     const data = await res.json();
 
     if (data.error) {
-      alert(data.error);
+      showError(data.error);
       setLoading(false);
     } else {
-      window.location.href = "/login";
+      showSuccess('Email verified Successfully')
+      router.push('/login')
     }
   };
 
   const handleResend = async () => {
     if (!email) {
-      alert("Email missing");
+      showError("Email missing");
       return;
     }
 
@@ -66,14 +72,14 @@ export default function VerifyPage() {
       const data = await res.json();
 
       if (data.error) {
-        alert(data.error);
+        showError(data.error)
       } else {
-        alert("New OTP sent 🚀");
+        showSuccess('New OTP sent to your email')
         setTimer(60); // reset timer
       }
     } catch (error) {
       console.error(error);
-      alert("Something went wrong");
+      showError("Something went wrong");
     } finally {
       setResendLoading(false);
     }

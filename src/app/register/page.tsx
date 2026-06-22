@@ -3,6 +3,8 @@
 
 import AuthCard from "@/components/AuthCard";
 import InputField from "@/components/InputField";
+import { showError, showSuccess } from "@/lib/toast";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function RegisterPage() {
@@ -10,9 +12,11 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false)
 
+  const router = useRouter()
+
   const handleRegister = async () => {
   if (!email || !password) {
-    alert("Email and password required");
+    showError('Email and Password is required..')
     return;
   }
 
@@ -30,14 +34,15 @@ export default function RegisterPage() {
     const data = await res.json();
 
     if (data.error) {
-      alert(data.error);
+      showError(data.error)
       setLoading(false);
     } else {
-      window.location.href = `/verify?email=${email}`;
+      showSuccess('Account created Successfully! OTP sent already..')
+      router.push(`/verify?email=${email}`)
     }
   } catch (err) {
     console.error(err);
-    alert("Something went wrong");
+    showError('Something went wrong..')
     setLoading(false);
   }
 };
