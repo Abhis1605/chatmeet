@@ -8,18 +8,39 @@ import { useState } from "react";
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false)
 
   const handleRegister = async () => {
+  if (!email || !password) {
+    alert("Email and password required");
+    return;
+  }
+
+  setLoading(true);
+
+  try {
     const res = await fetch("/api/auth/register", {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({ email, password }),
     });
 
     const data = await res.json();
 
-    if (data.error) alert(data.error);
-    else window.location.href = "/verify";
-  };
+    if (data.error) {
+      alert(data.error);
+      setLoading(false);
+    } else {
+      window.location.href = `/verify?email=${email}`;
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Something went wrong");
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-[#0b1220] to-[#111827]">
@@ -50,9 +71,13 @@ export default function RegisterPage() {
           />
         </div>
 
-        <button className="btn-primary w-full mt-6" onClick={handleRegister}>
-          Create Account
-        </button>
+        <button
+  className="btn-primary w-full mt-6 disabled:opacity-50 disabled:cursor-not-allowed"
+  onClick={handleRegister}
+  disabled={loading}
+>
+  {loading ? "Creating..." : "Create Account"}
+</button>
 
         <p className="text-center text-sm text-gray-400 mt-6">
           Already have an account?{" "}
