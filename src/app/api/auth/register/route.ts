@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { sendOTPEmail } from "@/lib/resend";
 import bcrypt from "bcrypt";
 
 export async function POST(req: Request) {
@@ -30,17 +31,21 @@ export async function POST(req: Request) {
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
+  const otpExpiry = new Date(Date.now() + 60 * 1000);
+
   await prisma.user.create({
     data: {
       email,
       password: hashed,
       provider: "credentials",
       otp,
-      otpExpiry: new Date(Date.now() + 10 * 60 * 1000),
+      otpExpiry,
     },
   });
 
   console.log(otp)
+  
+  await sendOTPEmail(email, otp)
 
   return Response.json({
      success: true

@@ -9,9 +9,10 @@ export default function VerifyPage() {
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [timer, setTimer] = useState(60);
+  const [resendLoading, setResendLoading] = useState(false);
 
-  const searchParams = useSearchParams()
-  const email = searchParams.get('email') || ''
+  const searchParams = useSearchParams();
+  const email = searchParams.get("email") || "";
   useEffect(() => {
     if (timer === 0) return;
 
@@ -22,7 +23,7 @@ export default function VerifyPage() {
     return () => clearInterval(interval);
   }, [timer]);
 
-  console.log(otp, email)
+  console.log(otp, email);
 
   const handleVerify = async () => {
     setLoading(true);
@@ -30,7 +31,7 @@ export default function VerifyPage() {
     const res = await fetch("/api/auth/verify-otp", {
       method: "POST",
       headers: {
-        'Content-Type': 'application/json'
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ email, otp }),
     });
@@ -45,14 +46,49 @@ export default function VerifyPage() {
     }
   };
 
+  const handleResend = async () => {
+    if (!email) {
+      alert("Email missing");
+      return;
+    }
+
+    setResendLoading(true);
+
+    try {
+      const res = await fetch("/api/auth/resend-otp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        alert(data.error);
+      } else {
+        alert("New OTP sent 🚀");
+        setTimer(60); // reset timer
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Something went wrong");
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-[#0b1220] to-[#111827]">
-
       <AuthCard>
-
         {/* Logo */}
         <div className="text-center mb-6">
-          <img src="/chatmeet-logo.png" className="mx-auto h-16 mb-2" alt="logo-png" />
+          <img
+            src="/chatmeet-logo.png"
+            className="mx-auto h-16 mb-2"
+            alt="logo-png"
+          />
           <h1 className="text-2xl font-bold text-white">ChatMeet</h1>
           <p className="text-sm text-gray-400">
             Verify your identity to secure your account
@@ -84,17 +120,17 @@ export default function VerifyPage() {
         {/* Resend */}
         <div className="text-center text-sm text-gray-400 mt-6">
           {timer > 0 ? (
-            <p>Resend code in 00:{timer}</p>
+            <p>Resend code in 00:{timer.toString().padStart(2, "0")}</p>
           ) : (
             <button
-              onClick={() => setTimer(60)}
-              className="text-blue-400"
+              onClick={handleResend}
+              disabled={resendLoading}
+              className="text-blue-400 disabled:opacity-50"
             >
-              Resend Code
+              {resendLoading ? "Sending..." : "Resend Code"}
             </button>
           )}
         </div>
-
       </AuthCard>
     </div>
   );
