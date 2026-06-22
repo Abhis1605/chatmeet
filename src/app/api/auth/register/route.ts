@@ -40,6 +40,8 @@ export async function POST(req: Request) {
     },
   });
 
+  console.log(otp)
+
   return Response.json({
      success: true
   })
