@@ -8,14 +8,16 @@ interface ModalProps {
     children: ReactNode
 }
 
-export default function Model({ isOpen, onClose, children } : ModalProps){
+export default function Modal({ isOpen, onClose, children } : ModalProps){ 
     if (!isOpen) return null
 
     return (
-        <div onClick={onclose} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+        <div 
+          onClick={onClose} // Fixed typo: onclose -> onClose
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+        >
       {/* Modal Box */}
       <div onClick={(e) => e.stopPropagation()} className="bg-[#1f2937] p-6 rounded-xl w-[90%] max-w-md relative">
-
         {/* Close Button */}
         <button
           onClick={onClose}
