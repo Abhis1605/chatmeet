@@ -2,23 +2,34 @@
 
 import AuthCard from "@/components/AuthCard";
 import InputField from "@/components/InputField";
+import { showError, showSuccess } from "@/lib/toast";
 import { signIn } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [loading, setLoading] = useState<'credentials' | 'google' | 'github' | null>(null)
 
+  const router = useRouter()
+
   const handleLogin = async () => {
-    await signIn("credentials", {
+    setLoading('credentials')
+    const res = await signIn("credentials", {
       email,
       password,
-      callbackUrl: "/chat",
+      redirect: false,
     });
+
+    if(res?.error){
+      showError(res.error)
+    }else {
+      showSuccess('Logged in successfully')
+      router.push('/chat')
+    }
 
     setLoading(null)
   };
@@ -26,7 +37,7 @@ export default function LoginPage() {
   const handleOAuth = async (provider: "google" | "github") => {
     setLoading(provider);
 
-    await signIn(provider, { callbackUrl: "/chat" });
+    const res = await signIn(provider, { callbackUrl: "/chat?login=success" });
   };
 
   return (
