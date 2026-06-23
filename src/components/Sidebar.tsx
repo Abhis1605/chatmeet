@@ -4,10 +4,11 @@ import { useState } from "react";
 import { SIDEBAR_TOP, SIDEBAR_BOTTOM } from "@/lib/sidebarConfig";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
+import { useChatStore } from "@/store/useChatStore";
 
 export default function Sidebar() {
-  const [active, setActive] = useState("personal");
-  const [collapsed, setCollapsed] = useState(false);
+  const { activeTab, setActiveTab } = useChatStore()
+  const [collapsed, setCollapsed] = useState(true);
 
   return (
     <div
@@ -43,11 +44,11 @@ export default function Sidebar() {
             return (
               <div key={item.id} className="relative group">
                 <button
-                  onClick={() => setActive(item.id)}
+                  onClick={() => setActiveTab(item.id)}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition
                   ${collapsed ? "justify-center" : ""}
                   ${
-                    active === item.id
+                    activeTab === item.id
                       ? "bg-white/10 text-white"
                       : "text-gray-400 hover:bg-white/5 hover:text-white"
                   }`}
@@ -56,7 +57,7 @@ export default function Sidebar() {
                   {!collapsed && <span>{item.label}</span>}
                 </button>
 
-                {/* 🔥 TOOLTIP */}
+                {/* TOOLTIP */}
                 {collapsed && (
                   <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2
                     hidden group-hover:flex items-center
@@ -90,7 +91,7 @@ export default function Sidebar() {
                   {!collapsed && <span>{item.label}</span>}
                 </button>
 
-                {/* 🔥 TOOLTIP */}
+                {/* TOOLTIP */}
                 {collapsed && (
                   <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2
                     hidden group-hover:flex items-center
@@ -124,7 +125,7 @@ export default function Sidebar() {
               )}
             </button>
 
-            {/* 🔥 TOOLTIP */}
+            {/* TOOLTIP */}
             {collapsed && (
               <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2
                 hidden group-hover:flex items-center
