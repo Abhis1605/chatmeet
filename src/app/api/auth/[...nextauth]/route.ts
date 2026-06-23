@@ -99,6 +99,7 @@ export const authOptions: NextAuthOptions = {
         async jwt({ token, user, trigger, session }){
             if (user){
                 token.id = user.id,
+                token.email = user.email
                 token.name = user.name
             }
 
@@ -108,11 +109,14 @@ export const authOptions: NextAuthOptions = {
 
             return token
         },
-        async session({session, token }){
+        async session({ session, token }){
             if(session.user){
                 session.user.id = token.id as string
                 session.user.name = token.name as string
+                session.user.email = token.email as string
             }
+            (session as any).accessToken = token
+            
             return session
         }
     },
