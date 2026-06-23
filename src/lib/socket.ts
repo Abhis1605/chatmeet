@@ -8,6 +8,7 @@ export const connectSocket = (token: any) => {
       auth: {
         token,
       },
+      transports: ['websocket']
     });
   }
   return socket;
