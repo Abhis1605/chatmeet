@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { showSuccess } from "@/lib/toast";
 import Modal from "@/components/Modal"; // Ensure import matches file name
 import { useSession } from "next-auth/react";
+import Sidebar from "@/components/Sidebar";
 
 export default function ChatClient() {
   const { data: session, update, status } = useSession(); // Destructure status
@@ -55,8 +56,7 @@ export default function ChatClient() {
 
   return (
     <>
-      <h1 className="text-white">Welcome {session?.user?.email}</h1>
-
+    <Sidebar />
       <Modal isOpen={open} onClose={() => setOpen(false)}>
         <h2 className="text-white text-lg mb-4">Complete Your Profile</h2>
         <input

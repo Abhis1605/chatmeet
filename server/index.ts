@@ -1,9 +1,11 @@
 import express from 'express'
 import http from 'http'
 import { Server, Socket } from 'socket.io'
-import jwt from 'jsonwebtoken'
 import { PrismaClient } from '../src/generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 interface SocketUser {
     id: string,
@@ -27,7 +29,9 @@ const server = http.createServer(app)
 
 const io = new Server(server, {
     cors: {
-        origin: 'http://localhost:3000'
+        origin: 'http://localhost:3000',
+        methods: ['GET', 'POST'],
+        credentials: true
     }
 })
 
@@ -35,18 +39,17 @@ io.use((socket: CustomSocket, next) => {
     try {
         const token = socket.handshake.auth.token
 
-        if (!token){
+        console.log('Incoming token:', token)
+
+        if (!token || !token.id){
             return next(new Error('Unauthorized'))
         }
 
-        const secret = process.env.NEXTAUTH_SECRET
-        if (!secret){
-            return next(new Error('Server configuaration error: Missing secret'))
+        socket.user = {
+            id: token.id,
+        email: token.email,
+        name: token.name
         }
-
-        const decoded = jwt.verify(token, secret) as SocketUser
-
-        socket.user = decoded
 
         next()
     } catch (error) {
@@ -77,6 +80,7 @@ io.on('connection', (socket: CustomSocket) => {
 
             if (!isMember){
                 console.log('Unauthorized message attempt')
+                return
             }
 
             const message = await prisma.message.create({
