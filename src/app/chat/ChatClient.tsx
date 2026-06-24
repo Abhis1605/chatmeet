@@ -1,4 +1,3 @@
-// src/app/chat/ChatClient.tsx
 "use client";
 
 import { useEffect, useState } from "react";

@@ -1,20 +1,19 @@
 import { prisma } from "@/lib/prisma";
 
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const { userId, targetUserId } = body;
 
-export async function POST(req: Request){
-    try {
-        const body = await req.json()
+    if (!userId || !targetUserId) {
+      return Response.json(
+        { error: "Missing userId" },
+        { status: 400 }
+      );
+    }
 
-        const { userId, targetUserId } = body
-
-        if (!userId || !targetUserId) {
-            return Response.json(
-                {error: 'Missing userId'},
-                { status: 400 }
-            )
-        }
-
-        const existing = await prisma.chat.findFirst({
+    // CHECK EXISTING CHAT
+    const existing = await prisma.chat.findFirst({
       where: {
         isGroup: false,
         AND: [
@@ -22,12 +21,20 @@ export async function POST(req: Request){
           { members: { some: { userId: targetUserId } } },
         ],
       },
+      include: {
+        members: {
+          include: {
+            user: true,
+          },
+        },
+      },
     });
 
     if (existing) {
       return Response.json(existing);
     }
 
+    // CREATE NEW CHAT
     const chat = await prisma.chat.create({
       data: {
         isGroup: false,
@@ -38,16 +45,23 @@ export async function POST(req: Request){
           ],
         },
       },
+      include: {
+        members: {
+          include: {
+            user: true,
+          },
+        },
+      },
     });
 
     return Response.json(chat);
 
-    } catch (error) {
-        console.error('API Error:', error)
+  } catch (error) {
+    console.error("API Error:", error);
 
-        return Response.json(
-            { error: "Server error"},
-            { status: 500 }
-        )
-    }
+    return Response.json(
+      { error: "Server error" },
+      { status: 500 }
+    );
+  }
 }
