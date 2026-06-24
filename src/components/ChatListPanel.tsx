@@ -33,7 +33,7 @@ export default function ChatListPanel({ type }: any) {
 
         <button
           onClick={() => setOpenSearch(true)}
-          className="text-sm bg-white/10 px-3 py-1 rounded hover:bg-white/20 cursor-pointer"
+          className="btn-primary !py-1.5 !px-4 !text-sm cursor-pointer"
         >
           Search
         </button>
@@ -66,7 +66,7 @@ export default function ChatListPanel({ type }: any) {
               {/* Info */}
               <div className="flex-1">
                 <p className="text-white text-sm font-medium">
-                  {otherUser?.name || otherUser?.email}
+                  {otherUser?.email}
                 </p>
 
                 <p className="text-gray-400 text-xs truncate">
