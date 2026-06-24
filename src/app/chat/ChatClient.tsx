@@ -64,7 +64,7 @@ export default function ChatClient() {
           className="w-full p-2 rounded mb-4 text-black"
           onChange={(e) => setName(e.target.value)}
         />
-        <button onClick={handleSave} className="bg-blue-600 p-2 rounded w-full text-white">
+        <button onClick={handleSave} className="btn-primary w-full">
           Save
         </button>
       </Modal>

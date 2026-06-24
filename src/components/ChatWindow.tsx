@@ -65,12 +65,13 @@ export default function ChatWindow() {
   useEffect(() => {
     if (!selectedChat?.id || !socketRef.current) return;
 
-    socketRef.current.emit('join-chat', selectedChat.id)
+    const socket = socketRef.current;
+    socket.emit('join-chat', selectedChat.id)
 
     return () => {
-      socketRef.current.emit('leave-chat', selectedChat.id)
+      socket.emit('leave-chat', selectedChat.id)
     }
-  }, [selectedChat]);
+  }, [selectedChat, session]); // Adding session to re-trigger when socket is initialized
 
   // SEND MESSAGE (OPTIMISTIC UI)
   const sendMessage = () => {
@@ -112,24 +113,31 @@ export default function ChatWindow() {
       </div>
 
       {/* MESSAGES */}
-      <div className="flex-1 p-4 overflow-y-auto space-y-2">
+      <div className="flex-1 p-4 overflow-y-auto space-y-4 flex flex-col">
         {messages.length === 0 ? (
           <div className="text-gray-400 text-sm text-center mt-10">
             No messages yet 
           </div>
         ) : (
-          messages.map((m) => (
-            <div
-              key={m.id}
-              className={`px-3 py-2 rounded max-w-xs ${
-                m.senderId === session?.user?.id
-                  ? "bg-blue-600 ml-auto"
-                  : "bg-gray-700"
-              }`}
-            >
-              {m.content}
-            </div>
-          ))
+          messages.map((m) => {
+            const isMe = m.senderId === session?.user?.id;
+            return (
+              <div
+                key={m.id}
+                className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`px-4 py-2 rounded-2xl max-w-[70%] ${
+                    isMe
+                      ? "bg-blue-600 text-white rounded-tr-none shadow-md"
+                      : "bg-gray-800 text-gray-200 rounded-tl-none border border-white/5"
+                  }`}
+                >
+                  {m.content}
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
 
@@ -138,12 +146,13 @@ export default function ChatWindow() {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          className="flex-1 p-2 rounded text-white"
+          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          className="flex-1 p-2 bg-white/5 rounded text-white border border-white/10 focus:border-blue-500 outline-none"
           placeholder="Type message..."
         />
         <button
           onClick={sendMessage}
-          className="bg-blue-600 px-4 rounded text-white"
+          className="btn-primary"
         >
           Send
         </button>
