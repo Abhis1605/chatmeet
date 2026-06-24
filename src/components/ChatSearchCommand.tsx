@@ -72,6 +72,12 @@ export default function ChatSearchCommand({
       });
 
       const chat = await res.json();
+      
+      if (res.status === 500) {
+        console.error("Server 500 error during chat creation:", chat);
+        alert("Session error. Please log out and log back in to refresh your ID.");
+        return;
+      }
 
       addChat(chat)
       setSelectedChat(chat);

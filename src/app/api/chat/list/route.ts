@@ -22,9 +22,6 @@ export async function GET(req: Request) {
             userId: session.user.id,
           },
         },
-        messages: {
-          some: {},
-        },
       },
       include: {
         members: {

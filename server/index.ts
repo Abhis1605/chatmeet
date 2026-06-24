@@ -54,26 +54,27 @@ io.use((socket: CustomSocket, next) => {
         // }
 
         socket.user = token as SocketUser
-        console.log('Socket user:', socket.user)
+        console.log('Socket user set to:', socket.user)
 
         next()
     } catch (error) {
-        console.error('Auth error:', error)
+        console.error('Auth error detail:', error)
         next(new Error('Unauthorized'))
     }
 })
 
 io.on('connection', (socket: CustomSocket) => {
-    console.log('User connected', socket.user?.email)
+    console.log('User connected - ID:', socket.user?.id, 'Email:', socket.user?.email)
 
     socket.on('join-chat', (chatId: string) => {
         if(!chatId) return
         socket.join(chatId)
+        console.log(`User ${socket.user?.email} joined room: ${chatId}`)
     })
 
     socket.on('send-message', async ({ chatId, content }: { chatId: string, content: string }) => {
         try {
-
+            console.log(`Message from ${socket.user?.email} to ${chatId}: ${content}`)
             if (!chatId || !content) return 
 
             const isMember = await prisma.chatMember.findFirst({
@@ -84,7 +85,7 @@ io.on('connection', (socket: CustomSocket) => {
             })
 
             if (!isMember){
-                console.log('Unauthorized message attempt')
+                console.log('Unauthorized message attempt by', socket.user?.id, 'for chat', chatId)
                 return
             }
 
@@ -96,10 +97,13 @@ io.on('connection', (socket: CustomSocket) => {
                 }
             })
 
+            console.log('Message created in DB, emitting...')
             io.to(chatId).emit('new-message', message)
+            // Also notify the specific user to refresh their chat list if it's a new chat for them
+            io.emit('chat-updated', { chatId, senderId: socket.user?.id })
 
         } catch (error) {
-            console.error(error)
+            console.error('Socket send-message error:', error)
         }
     })
 

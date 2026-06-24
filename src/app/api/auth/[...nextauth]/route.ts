@@ -98,9 +98,20 @@ export const authOptions: NextAuthOptions = {
         },
         async jwt({ token, user, trigger, session }){
             if (user){
-                token.id = user.id,
+                token.id = user.id
                 token.email = user.email
                 token.name = user.name
+            }
+
+            // CRITICAL: Always ensure the token.id is the database CUID, not a provider ID
+            // Check if the current ID is likely a provider ID (numeric) or if we just want to be sure
+            if (token.email) {
+                const dbUser = await prisma.user.findUnique({
+                    where: { email: token.email as string }
+                });
+                if (dbUser) {
+                    token.id = dbUser.id; // Override with the CUID from our database
+                }
             }
 
             if (trigger === 'update' && session?.user) {
