@@ -5,10 +5,20 @@ import ChatListPanel from "@/components/ChatListPanel";
 import ChatWindow from "@/components/ChatWindow";
 import { useChatStore } from "@/store/useChatStore";
 import { useSession } from "next-auth/react";
+import { useEffect } from "react";
+import { connectSocket } from "@/lib/socket";
 
 export default function ChatPage() {
   const { activeTab, selectedChat } = useChatStore();
-  const { status } = useSession();
+  const { data: session, status } = useSession();
+
+  // Initialize socket globally for the chat page
+  useEffect(() => {
+    if (status === "authenticated" && session) {
+      const token = (session as any).accessToken;
+      connectSocket(token);
+    }
+  }, [session, status]);
 
   // Handle loading state
   if (status === "loading") {

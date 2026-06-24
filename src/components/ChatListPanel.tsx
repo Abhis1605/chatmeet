@@ -4,6 +4,7 @@ import { useChatStore } from "@/store/useChatStore";
 import { useEffect, useState } from "react";
 import ChatSearchCommand from "./ChatSearchCommand";
 import { useSession } from "next-auth/react";
+import { getSocket } from "@/lib/socket";
 
 export default function ChatListPanel({ type }: any) {
 
@@ -15,15 +16,31 @@ export default function ChatListPanel({ type }: any) {
 
   const [openSearch, setOpenSearch] = useState(false);
 
-  useEffect(() => {
-    const fetchChats = async () => {
-      const res = await fetch(`/api/chat/list?type=${type}`);
+  const fetchChats = async () => {
+    const res = await fetch(`/api/chat/list?type=${type}`);
+    if (res.ok) {
       const data = await res.json();
       setChats(data);
-    };
+    }
+  };
 
+  useEffect(() => {
     fetchChats();
   }, [type, setChats]);
+
+  // Listen for global chat updates (new chats, etc)
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    socket.on('chat-updated', () => {
+      fetchChats();
+    });
+
+    return () => {
+      socket.off('chat-updated');
+    };
+  }, [type]);
 
   return (
     <div className="w-[320px] border-r border-white/10 flex flex-col">

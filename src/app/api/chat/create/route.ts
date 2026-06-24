@@ -5,9 +5,11 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { userId, targetUserId } = body;
 
+    console.log("Creating chat between:", userId, "and", targetUserId);
+
     if (!userId || !targetUserId) {
       return Response.json(
-        { error: "Missing userId" },
+        { error: "Missing userId or targetUserId" },
         { status: 400 }
       );
     }
@@ -35,26 +37,38 @@ export async function POST(req: Request) {
     }
 
     // CREATE NEW CHAT
-    const chat = await prisma.chat.create({
-      data: {
-        isGroup: false,
-        members: {
-          create: [
-            { userId },
-            { userId: targetUserId },
-          ],
-        },
-      },
-      include: {
-        members: {
-          include: {
-            user: true,
+    try {
+      const chat = await prisma.chat.create({
+        data: {
+          isGroup: false,
+          members: {
+            create: [
+              { userId },
+              { userId: targetUserId },
+            ],
           },
         },
-      },
-    });
+        include: {
+          members: {
+            include: {
+              user: true,
+            },
+          },
+        },
+      });
 
-    return Response.json(chat);
+      return Response.json(chat);
+    } catch (dbError: any) {
+      console.error("Prisma specific error:", dbError.code, dbError.meta);
+      return Response.json(
+        { 
+          error: "Database constraint violated", 
+          details: dbError.meta,
+          code: dbError.code 
+        },
+        { status: 500 }
+      );
+    }
 
   } catch (error) {
     console.error("API Error:", error);

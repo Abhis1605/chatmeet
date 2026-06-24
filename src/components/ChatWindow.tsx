@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { connectSocket } from "@/lib/socket";
+import { getSocket } from "@/lib/socket";
 import { useChatStore } from "@/store/useChatStore";
 import { useSession } from "next-auth/react";
 
@@ -12,7 +12,6 @@ export default function ChatWindow() {
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
 
-  const socketRef = useRef<any>(null);
   const selectedChatRef = useRef<any>(null)
 
   useEffect(() => {
@@ -34,18 +33,10 @@ export default function ChatWindow() {
     fetchMessages();
   }, [selectedChat]);
 
-  // SOCKET INIT (RUN ONLY ONCE)
+  // SOCKET LISTENERS
   useEffect(() => {
-    if (!session) return;
-
-    const token = (session as any).accessToken;
-    const socket = connectSocket(token);
-
-    socketRef.current = socket;
-
-    socket.on("connect", () => {
-      console.log("Connected");
-    });
+    const socket = getSocket();
+    if (!socket || !session) return;
 
     socket.on('new-message', (msg: any) => {
       if (msg.chatId === selectedChatRef.current?.id) {
@@ -57,27 +48,27 @@ export default function ChatWindow() {
 
     return () => {
       socket.off("new-message"); 
-      socket.disconnect()
     };
-  }, [session]);
+  }, [session, selectedChat?.id]); // Re-bind if chat changes to ensure ref is fresh
 
   // JOIN ROOM WHEN CHAT CHANGES
   useEffect(() => {
-    if (!selectedChat?.id || !socketRef.current) return;
+    const socket = getSocket();
+    if (!selectedChat?.id || !socket) return;
 
-    const socket = socketRef.current;
     socket.emit('join-chat', selectedChat.id)
 
     return () => {
       socket.emit('leave-chat', selectedChat.id)
     }
-  }, [selectedChat, session]); // Adding session to re-trigger when socket is initialized
+  }, [selectedChat]);
 
   // SEND MESSAGE (OPTIMISTIC UI)
   const sendMessage = () => {
-  if (!input.trim() || !socketRef.current) return;
+  const socket = getSocket();
+  if (!input.trim() || !socket || !selectedChat?.id) return;
 
-  socketRef.current.emit("send-message", {
+  socket.emit("send-message", {
     chatId: selectedChat.id,
     content: input,
   });
