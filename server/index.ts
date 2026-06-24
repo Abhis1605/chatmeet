@@ -41,15 +41,20 @@ io.use((socket: CustomSocket, next) => {
 
         console.log('Incoming token:', token)
 
-        if (!token || !token.id){
+        if (!token){
             return next(new Error('Unauthorized'))
         }
 
-        socket.user = {
-            id: token.id,
-        email: token.email,
-        name: token.name
-        }
+        console.log('Decoded token', token)
+
+        // socket.user = {
+        //     id: token.id,
+        // email: token.email,
+        // name: token.name
+        // }
+
+        socket.user = token as SocketUser
+        console.log('Socket user:', socket.user)
 
         next()
     } catch (error) {
@@ -96,6 +101,10 @@ io.on('connection', (socket: CustomSocket) => {
         } catch (error) {
             console.error(error)
         }
+    })
+
+    socket.on('leave-chat', (chatId) => {
+        socket.leave(chatId)
     })
 
     socket.on('disconnect', () => {
