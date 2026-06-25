@@ -29,6 +29,9 @@ model User {
   resetToken    String?
   resetExpiry   DateTime?
 
+  isOnline Boolean @default(false)
+  lastSeen DateTime?
+
   messages Message[]
   chats   ChatMember[]
 
