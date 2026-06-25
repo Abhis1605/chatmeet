@@ -111,10 +111,14 @@ io.on('connection', (socket: CustomSocket) => {
         console.log(`User ${socket.user?.email} joined room: ${chatId}`)
     })
 
-    socket.on('send-message', async ({ chatId, content }: { chatId: string, content: string }) => {
+    socket.on('send-message', async ({ chatId, content, type, fileUrl, fileName, fileType, fileSize }: { chatId: string, content?: string, type: 'TEXT' | 'IMAGE' | 'FILE' | 'VIDEO', fileUrl?: string, fileName?:string, fileType?: string, fileSize?: number }) => {
         try {
             console.log(`Message from ${socket.user?.email} to ${chatId}: ${content}`)
-            if (!chatId || !content) return 
+            if (!chatId ) return 
+
+            if (type === 'TEXT' && !content){
+                return
+            }
 
             const isMember = await prisma.chatMember.findFirst({
                 where: {
@@ -130,9 +134,15 @@ io.on('connection', (socket: CustomSocket) => {
 
             const message = await prisma.message.create({
                 data: {
-                    content,
                     chatId,
-                    senderId: socket.user!.id
+                    senderId: socket.user!.id,
+                    type,
+                    content,
+
+                    fileUrl,
+                    fileName,
+                    fileType,
+                    fileSize,
                 }
             })
 

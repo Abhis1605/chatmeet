@@ -5,6 +5,7 @@ import { connectSocket } from "@/lib/socket";
 import { useChatStore } from "@/store/useChatStore";
 import { useSession } from "next-auth/react";
 import { Socket } from "socket.io-client";
+import FileUploadButton from "./FileUploadButton";
 
 export default function ChatWindow() {
   const { selectedChat, updateLastMessage } = useChatStore();
@@ -23,7 +24,7 @@ export default function ChatWindow() {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const otherUser = selectedChat?.members?.find(
-    (member: any) => member.user.id !== session?.user?.id
+    (member: any) => member.user.id !== session?.user?.id,
   )?.user;
 
   useEffect(() => {
@@ -127,6 +128,7 @@ export default function ChatWindow() {
 
     socket.emit("send-message", {
       chatId: selectedChat.id,
+      type: "TEXT",
       content: input,
     });
 
@@ -221,7 +223,22 @@ export default function ChatWindow() {
                       : "bg-gray-800 text-gray-200 rounded-tl-none border border-white/5"
                   }`}
                 >
-                  {message.content}
+                  <>
+                    {message.type === "TEXT" && <p>{message.content}</p>}
+                    {
+                        message.type === 'IMAGE' && (
+                            <img src={message.fileUrl} alt={message.fileName} />
+                        )
+                    }
+
+                    {
+                        message.type === 'FILE' && (
+                            <a href={message.fileUrl} target="_blank" rel="noopener noreferrer">
+                                📄 {message.fileName}
+                            </a>
+                        )
+                    }
+                  </>
                 </div>
               </div>
             );
@@ -230,6 +247,22 @@ export default function ChatWindow() {
       </div>
 
       <div className="p-4 flex gap-2 border-t border-white/10">
+        <FileUploadButton
+          onUploadComplete={(file) => {
+            if (!socket || !selectedChat?.id) return;
+
+            socket.emit("send-message", {
+              chatId: selectedChat.id,
+
+              type: file.type.startsWith("image/") ? "IMAGE" : "FILE",
+
+              fileUrl: file.ufsUrl,
+              fileName: file.name,
+              fileType: file.type,
+              fileSize: file.size,
+            });
+          }}
+        />
         <input
           value={input}
           onChange={handleTyping}
