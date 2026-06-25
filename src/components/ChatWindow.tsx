@@ -5,7 +5,10 @@ import { connectSocket } from "@/lib/socket";
 import { useChatStore } from "@/store/useChatStore";
 import { useSession } from "next-auth/react";
 import { Socket } from "socket.io-client";
-import FileUploadButton from "./FileUploadButton";
+import ChatHeader from "./chat/ChatHeader";
+import MessageList from "./chat/MessageList";
+import ChatInput from "./chat/ChatInput";
+import { useUploadThing } from "@/lib/uploadthing";
 
 export default function ChatWindow() {
   const { selectedChat, updateLastMessage } = useChatStore();
@@ -19,6 +22,9 @@ export default function ChatWindow() {
     isOnline?: boolean;
     lastSeen?: string | null;
   }>({});
+  const [uploading, setUploading] = useState(false);
+
+  const { startUpload } = useUploadThing("messageUploader");
 
   const selectedChatRef = useRef<any>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -182,97 +188,44 @@ export default function ChatWindow() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 border-b border-white/10 flex items-center gap-3">
-        <img
-          alt="avatar-img"
-          src={otherUser?.image || "/default-avatar.png"}
-          className="w-10 h-10 rounded-full"
-        />
-        <div className="flex flex-col">
-          <p className="text-white font-medium">
-            {otherUser?.name || otherUser?.email}
-          </p>
-          <span
-            className={`text-xs ${
-              isTyping ? "text-green-400 animate-pulse" : "text-gray-400"
-            }`}
-          >
-            {presenceLabel}
-          </span>
-        </div>
-      </div>
+      <ChatHeader
+        otherUser={otherUser}
+        presenceLabel={presenceLabel}
+        isTyping={isTyping}
+      />
 
-      <div className="flex-1 p-4 overflow-y-auto space-y-4 flex flex-col">
-        {messages.length === 0 ? (
-          <div className="text-gray-400 text-sm text-center mt-10">
-            No messages yet
-          </div>
-        ) : (
-          messages.map((message) => {
-            const isMe = message.senderId === session?.user?.id;
+      <MessageList messages={messages} session={session} />
 
-            return (
-              <div
-                key={message.id}
-                className={`flex ${isMe ? "justify-end" : "justify-start"}`}
-              >
-                <div
-                  className={`px-4 py-2 rounded-2xl max-w-[70%] ${
-                    isMe
-                      ? "bg-blue-600 text-white rounded-tr-none shadow-md"
-                      : "bg-gray-800 text-gray-200 rounded-tl-none border border-white/5"
-                  }`}
-                >
-                  <>
-                    {message.type === "TEXT" && <p>{message.content}</p>}
-                    {
-                        message.type === 'IMAGE' && (
-                            <img src={message.fileUrl} alt={message.fileName} />
-                        )
-                    }
-
-                    {
-                        message.type === 'FILE' && (
-                            <a href={message.fileUrl} target="_blank" rel="noopener noreferrer">
-                                📄 {message.fileName}
-                            </a>
-                        )
-                    }
-                  </>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-
-      <div className="p-4 flex gap-2 border-t border-white/10">
-        <FileUploadButton
-          onUploadComplete={(file) => {
+      <div className="p-4  gap-2 border-t border-white/10">
+        <ChatInput
+          input={input}
+          onChange={handleTyping}
+          onSend={sendMessage}
+          onUpload={async (file: File) => {
             if (!socket || !selectedChat?.id) return;
 
-            socket.emit("send-message", {
-              chatId: selectedChat.id,
+            try {
+              setUploading(true);
 
-              type: file.type.startsWith("image/") ? "IMAGE" : "FILE",
+              const uploaded = await startUpload([file]);
 
-              fileUrl: file.ufsUrl,
-              fileName: file.name,
-              fileType: file.type,
-              fileSize: file.size,
-            });
+              if (!uploaded?.length) return;
+
+              const result = uploaded[0];
+
+              socket.emit("send-message", {
+                chatId: selectedChat.id,
+                type: file.type.startsWith("image/") ? "IMAGE" : "FILE",
+                fileUrl: result.serverData.url,
+                fileName: result.name,
+                fileType: result.type,
+                fileSize: result.size,
+              });
+            } finally {
+              setUploading(false);
+            }
           }}
         />
-        <input
-          value={input}
-          onChange={handleTyping}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          className="flex-1 p-2 bg-white/5 rounded text-white border border-white/10 focus:border-blue-500 outline-none"
-          placeholder="Type message..."
-        />
-        <button onClick={sendMessage} className="btn-primary">
-          Send
-        </button>
       </div>
     </div>
   );
