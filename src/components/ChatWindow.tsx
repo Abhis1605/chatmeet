@@ -1,28 +1,62 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getSocket } from "@/lib/socket";
+import { connectSocket } from "@/lib/socket";
 import { useChatStore } from "@/store/useChatStore";
 import { useSession } from "next-auth/react";
+import { Socket } from "socket.io-client";
 
 export default function ChatWindow() {
   const { selectedChat, updateLastMessage } = useChatStore();
   const { data: session } = useSession();
 
+  const [socket, setSocket] = useState<Socket | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [otherUserPresence, setOtherUserPresence] = useState<{
+    isOnline?: boolean;
+    lastSeen?: string | null;
+  }>({});
 
-  const selectedChatRef = useRef<any>(null)
+  const selectedChatRef = useRef<any>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const otherUser = selectedChat?.members?.find(
+    (member: any) => member.user.id !== session?.user?.id
+  )?.user;
 
   useEffect(() => {
-    selectedChatRef.current = selectedChat
-  }, [selectedChat])
+    if (!session) return;
 
-  // LOAD MESSAGES (with reset)
+    const token = (session as any).accessToken;
+    setSocket(connectSocket(token));
+  }, [session]);
+
+  useEffect(() => {
+    selectedChatRef.current = selectedChat;
+  }, [selectedChat]);
+
+  useEffect(() => {
+    setOtherUserPresence({
+      isOnline: otherUser?.isOnline,
+      lastSeen: otherUser?.lastSeen,
+    });
+  }, [otherUser?.id, otherUser?.isOnline, otherUser?.lastSeen]);
+
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (!selectedChat?.id) return;
 
-    setMessages([]); // clear previous chat
+    setMessages([]);
+    setIsTyping(false);
 
     const fetchMessages = async () => {
       const res = await fetch(`/api/message/${selectedChat.id}`);
@@ -33,48 +67,95 @@ export default function ChatWindow() {
     fetchMessages();
   }, [selectedChat]);
 
-  // SOCKET LISTENERS
   useEffect(() => {
-    const socket = getSocket();
     if (!socket || !session) return;
 
-    socket.on('new-message', (msg: any) => {
+    const handleNewMessage = (msg: any) => {
       if (msg.chatId === selectedChatRef.current?.id) {
-        setMessages((prev) => [...prev, msg])
+        setMessages((prev) => [...prev, msg]);
       }
 
-      updateLastMessage(msg)
-    })
+      updateLastMessage(msg);
+    };
+
+    const handleUserTyping = (data: any) => {
+      if (data.userId !== session?.user?.id && selectedChatRef.current?.id) {
+        setIsTyping(true);
+      }
+    };
+
+    const handleUserStopTyping = (data: any) => {
+      if (data.userId !== session?.user?.id && selectedChatRef.current?.id) {
+        setIsTyping(false);
+      }
+    };
+
+    const handlePresenceChanged = (data: any) => {
+      if (data.userId === otherUser?.id) {
+        setOtherUserPresence({
+          isOnline: data.isOnline,
+          lastSeen: data.lastSeen,
+        });
+      }
+    };
+
+    socket.on("new-message", handleNewMessage);
+    socket.on("user-typing", handleUserTyping);
+    socket.on("user-stop-typing", handleUserStopTyping);
+    socket.on("user-presence-changed", handlePresenceChanged);
 
     return () => {
-      socket.off("new-message"); 
+      socket.off("new-message", handleNewMessage);
+      socket.off("user-typing", handleUserTyping);
+      socket.off("user-stop-typing", handleUserStopTyping);
+      socket.off("user-presence-changed", handlePresenceChanged);
     };
-  }, [session, selectedChat?.id]); // Re-bind if chat changes to ensure ref is fresh
+  }, [socket, session, updateLastMessage, otherUser?.id]);
 
-  // JOIN ROOM WHEN CHAT CHANGES
   useEffect(() => {
-    const socket = getSocket();
     if (!selectedChat?.id || !socket) return;
 
-    socket.emit('join-chat', selectedChat.id)
+    socket.emit("join-chat", selectedChat.id);
 
     return () => {
-      socket.emit('leave-chat', selectedChat.id)
-    }
-  }, [selectedChat]);
+      socket.emit("leave-chat", selectedChat.id);
+    };
+  }, [socket, selectedChat?.id]);
 
-  // SEND MESSAGE (OPTIMISTIC UI)
   const sendMessage = () => {
-  const socket = getSocket();
-  if (!input.trim() || !socket || !selectedChat?.id) return;
+    if (!input.trim() || !socket || !selectedChat?.id) return;
 
-  socket.emit("send-message", {
-    chatId: selectedChat.id,
-    content: input,
-  });
+    socket.emit("send-message", {
+      chatId: selectedChat.id,
+      content: input,
+    });
 
-  setInput("");
-};
+    setInput("");
+    socket.emit("stop-typing", selectedChat.id);
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+  };
+
+  const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInput(value);
+
+    if (!socket || !socket.connected || !selectedChat?.id) {
+      return;
+    }
+
+    socket.emit("typing", selectedChat.id);
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      socket.emit("stop-typing", selectedChat.id);
+    }, 1000);
+  };
 
   if (!selectedChat) {
     return (
@@ -84,37 +165,53 @@ export default function ChatWindow() {
     );
   }
 
-  const otherUser = selectedChat.members?.find(
-    (m: any) => m.user.id !== session?.user?.id
-  )?.user;
+  const presenceLabel = isTyping
+    ? "Typing..."
+    : otherUserPresence.isOnline
+      ? "Online"
+      : otherUserPresence.lastSeen
+        ? `Last seen ${new Intl.DateTimeFormat("en", {
+            hour: "numeric",
+            minute: "2-digit",
+            month: "short",
+            day: "numeric",
+          }).format(new Date(otherUserPresence.lastSeen))}`
+        : "Offline";
 
   return (
     <div className="h-full flex flex-col">
-
-      {/* HEADER */}
       <div className="p-4 border-b border-white/10 flex items-center gap-3">
         <img
           alt="avatar-img"
           src={otherUser?.image || "/default-avatar.png"}
           className="w-10 h-10 rounded-full"
         />
-        <p className="text-white font-medium">
-          {otherUser?.name || otherUser?.email}
-        </p>
+        <div className="flex flex-col">
+          <p className="text-white font-medium">
+            {otherUser?.name || otherUser?.email}
+          </p>
+          <span
+            className={`text-xs ${
+              isTyping ? "text-green-400 animate-pulse" : "text-gray-400"
+            }`}
+          >
+            {presenceLabel}
+          </span>
+        </div>
       </div>
 
-      {/* MESSAGES */}
       <div className="flex-1 p-4 overflow-y-auto space-y-4 flex flex-col">
         {messages.length === 0 ? (
           <div className="text-gray-400 text-sm text-center mt-10">
-            No messages yet 
+            No messages yet
           </div>
         ) : (
-          messages.map((m) => {
-            const isMe = m.senderId === session?.user?.id;
+          messages.map((message) => {
+            const isMe = message.senderId === session?.user?.id;
+
             return (
               <div
-                key={m.id}
+                key={message.id}
                 className={`flex ${isMe ? "justify-end" : "justify-start"}`}
               >
                 <div
@@ -124,7 +221,7 @@ export default function ChatWindow() {
                       : "bg-gray-800 text-gray-200 rounded-tl-none border border-white/5"
                   }`}
                 >
-                  {m.content}
+                  {message.content}
                 </div>
               </div>
             );
@@ -132,23 +229,18 @@ export default function ChatWindow() {
         )}
       </div>
 
-      {/* INPUT */}
       <div className="p-4 flex gap-2 border-t border-white/10">
         <input
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={handleTyping}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           className="flex-1 p-2 bg-white/5 rounded text-white border border-white/10 focus:border-blue-500 outline-none"
           placeholder="Type message..."
         />
-        <button
-          onClick={sendMessage}
-          className="btn-primary"
-        >
+        <button onClick={sendMessage} className="btn-primary">
           Send
         </button>
       </div>
-
     </div>
   );
 }

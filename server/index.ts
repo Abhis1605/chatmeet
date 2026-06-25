@@ -17,6 +17,29 @@ interface CustomSocket extends Socket {
     user?: SocketUser
 }
 
+const activeConnections = new Map<string, Set<string>>()
+
+const formatLastSeen = (date: Date | string | null | undefined) => {
+    if (!date) return null
+    return date instanceof Date ? date.toISOString() : new Date(date).toISOString()
+}
+
+const setUserPresence = async (userId: string, isOnline: boolean) => {
+    await prisma.user.update({
+        where: { id: userId },
+        data: {
+            isOnline,
+            lastSeen: isOnline ? null : new Date(),
+        },
+    })
+
+    io.emit('user-presence-changed', {
+        userId,
+        isOnline,
+        lastSeen: isOnline ? null : formatLastSeen(new Date()),
+    })
+}
+
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL || '',
 })
@@ -66,6 +89,22 @@ io.use((socket: CustomSocket, next) => {
 io.on('connection', (socket: CustomSocket) => {
     console.log('User connected - ID:', socket.user?.id, 'Email:', socket.user?.email)
 
+    if (socket.user?.id) {
+        const sockets = activeConnections.get(socket.user.id) ?? new Set<string>()
+        sockets.add(socket.id)
+        activeConnections.set(socket.user.id, sockets)
+
+        if (sockets.size === 1) {
+            setUserPresence(socket.user.id, true).catch((error) => {
+                console.error('Failed to mark user online:', error)
+            })
+        }
+    }
+
+    socket.onAny((event, ...args) => {
+        console.log('Event:', event, args)
+    })
+
     socket.on('join-chat', (chatId: string) => {
         if(!chatId) return
         socket.join(chatId)
@@ -107,12 +146,44 @@ io.on('connection', (socket: CustomSocket) => {
         }
     })
 
+    socket.on('typing', (chatId) => {
+        console.log(`${socket.user?.email} is typing in ${chatId}`)
+        socket.to(chatId).emit('user-typing', {
+            userId: socket.user?.id,
+            name: socket.user?.name
+        })
+    })
+
+    socket.on('stop-typing', (chatId) => {
+        console.log(`${socket.user?.email} stopped typing`)
+        socket.to(chatId).emit('user-stop-typing', {
+            userId: socket.user?.id
+        })
+    })
+
     socket.on('leave-chat', (chatId) => {
         socket.leave(chatId)
     })
 
     socket.on('disconnect', () => {
         console.log('User disconnected')
+
+        if (!socket.user?.id) return
+
+        const sockets = activeConnections.get(socket.user.id)
+
+        if (!sockets) return
+
+        sockets.delete(socket.id)
+
+        if (sockets.size === 0) {
+            activeConnections.delete(socket.user.id)
+            setUserPresence(socket.user.id, false).catch((error) => {
+                console.error('Failed to mark user offline:', error)
+            })
+        } else {
+            activeConnections.set(socket.user.id, sockets)
+        }
     })
 })
 

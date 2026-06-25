@@ -16,6 +16,18 @@ export default function ChatListPanel({ type }: any) {
 
   const [openSearch, setOpenSearch] = useState(false);
 
+  const formatPresence = (user: any) => {
+    if (user?.isOnline) return "Online";
+    if (!user?.lastSeen) return "Offline";
+
+    return `Last seen ${new Intl.DateTimeFormat("en", {
+      hour: "numeric",
+      minute: "2-digit",
+      month: "short",
+      day: "numeric",
+    }).format(new Date(user.lastSeen))}`;
+  };
+
   const fetchChats = async () => {
     const res = await fetch(`/api/chat/list?type=${type}`);
     if (res.ok) {
@@ -50,7 +62,7 @@ export default function ChatListPanel({ type }: any) {
 
         <button
           onClick={() => setOpenSearch(true)}
-          className="btn-primary !py-1.5 !px-4 !text-sm cursor-pointer"
+          className="btn-primary py-1.5! px-4! text-sm! cursor-pointer"
         >
           Search
         </button>
@@ -88,6 +100,10 @@ export default function ChatListPanel({ type }: any) {
 
                 <p className="text-gray-400 text-xs truncate">
                   {lastMessage?.content || "No messages yet"}
+                </p>
+
+                <p className={`text-xs mt-1 ${otherUser?.isOnline ? "text-green-400" : "text-gray-500"}`}>
+                  {formatPresence(otherUser)}
                 </p>
               </div>
             </div>

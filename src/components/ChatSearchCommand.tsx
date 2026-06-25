@@ -25,6 +25,18 @@ export default function ChatSearchCommand({
 
   const debounced = useDebounce(search, 400);
 
+  const formatPresence = (user: any) => {
+    if (user?.isOnline) return "Online";
+    if (!user?.lastSeen) return "Offline";
+
+    return `Last seen ${new Intl.DateTimeFormat("en", {
+      hour: "numeric",
+      minute: "2-digit",
+      month: "short",
+      day: "numeric",
+    }).format(new Date(user.lastSeen))}`;
+  };
+
   // Fetch users
   useEffect(() => {
     const fetchUsers = async () => {
@@ -155,6 +167,9 @@ export default function ChatSearchCommand({
                   </span>
                   <span className="text-gray-400 text-xs">
                     {user.email}
+                  </span>
+                  <span className={`text-xs ${user.isOnline ? "text-green-400" : "text-gray-500"}`}>
+                    {formatPresence(user)}
                   </span>
                 </div>
               </CommandItem>
