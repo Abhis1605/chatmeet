@@ -61,10 +61,23 @@ model ChatMember {
   chat Chat @relation(fields: [chatId], references: [id])
 }
 
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  FILE
+}
 
 model Message {
   id String @id @default(cuid())
-  content String
+  content String?
+
+  type MessageType @default(TEXT)
+
+  fileUrl String?
+  fileName String?
+  fileType String?
+  fileSize Int?
 
   senderId String
   chatId String
