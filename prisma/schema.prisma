@@ -56,9 +56,19 @@ model ChatMember {
 
   userId String
   chatId String
+  role ChatMemberRole @default(MEMBER)
+  canSend Boolean @default(false)
 
   user User @relation(fields: [userId], references: [id])
   chat Chat @relation(fields: [chatId], references: [id])
+
+  @@unique([userId, chatId])
+}
+
+enum ChatMemberRole {
+  CREATOR
+  ADMIN
+  MEMBER
 }
 
 enum MessageType {

@@ -9,6 +9,9 @@ import ChatHeader from "./chat/ChatHeader";
 import MessageList from "./chat/MessageList";
 import ChatInput from "./chat/ChatInput";
 import { useUploadThing } from "@/lib/uploadthing";
+import GroupMembersModal from "./group/GroupMembersModal";
+import { canSendGroupMessage } from "@/lib/groupPermissions";
+import { showError } from "@/lib/toast";
 
 export default function ChatWindow() {
   const { selectedChat, updateLastMessage } = useChatStore();
@@ -23,6 +26,7 @@ export default function ChatWindow() {
     lastSeen?: string | null;
   }>({});
   const [uploading, setUploading] = useState(false);
+  const [openGroupMembers, setOpenGroupMembers] = useState(false);
 
   const { startUpload } = useUploadThing("messageUploader");
 
@@ -32,6 +36,13 @@ export default function ChatWindow() {
   const otherUser = selectedChat?.members?.find(
     (member: any) => member.user.id !== session?.user?.id,
   )?.user;
+  const currentMember = selectedChat?.members?.find(
+    (member: any) =>
+      member.userId === session?.user?.id || member.user?.id === session?.user?.id,
+  );
+  const canSendMessage = selectedChat?.isGroup
+    ? canSendGroupMessage(currentMember)
+    : true;
 
   useEffect(() => {
     if (!session) return;
@@ -106,16 +117,24 @@ export default function ChatWindow() {
       }
     };
 
+    const handleMessageDenied = (data: any) => {
+      if (data.chatId === selectedChatRef.current?.id) {
+        showError(data.reason || "You do not have permission to message here.");
+      }
+    };
+
     socket.on("new-message", handleNewMessage);
     socket.on("user-typing", handleUserTyping);
     socket.on("user-stop-typing", handleUserStopTyping);
     socket.on("user-presence-changed", handlePresenceChanged);
+    socket.on("message-denied", handleMessageDenied);
 
     return () => {
       socket.off("new-message", handleNewMessage);
       socket.off("user-typing", handleUserTyping);
       socket.off("user-stop-typing", handleUserStopTyping);
       socket.off("user-presence-changed", handlePresenceChanged);
+      socket.off("message-denied", handleMessageDenied);
     };
   }, [socket, session, updateLastMessage, otherUser?.id]);
 
@@ -131,6 +150,10 @@ export default function ChatWindow() {
 
   const sendMessage = () => {
     if (!input.trim() || !socket || !selectedChat?.id) return;
+    if (!canSendMessage) {
+      showError("Only admins or permitted members can message in this group.");
+      return;
+    }
 
     socket.emit("send-message", {
       chatId: selectedChat.id,
@@ -191,18 +214,30 @@ export default function ChatWindow() {
       <ChatHeader
         otherUser={otherUser}
         presenceLabel={presenceLabel}
-        isTyping={isTyping}
+          isTyping={isTyping}
+          chat={selectedChat}
+          onManageGroup={() => setOpenGroupMembers(true)}
       />
 
-      <MessageList messages={messages} session={session} />
+      <MessageList
+        messages={messages}
+        session={session}
+        isGroup={Boolean(selectedChat?.isGroup)}
+      />
 
       <div className="p-4  gap-2 border-t border-white/10">
         <ChatInput
           input={input}
           onChange={handleTyping}
           onSend={sendMessage}
+          disabled={!canSendMessage || uploading}
+          placeholder={canSendMessage ? "Type a message..." : "Read-only group member"}
           onUpload={async (file: File) => {
             if (!socket || !selectedChat?.id) return;
+            if (!canSendMessage) {
+              showError("Only admins or permitted members can upload in this group.");
+              return;
+            }
 
             try {
               setUploading(true);
@@ -227,6 +262,13 @@ export default function ChatWindow() {
           }}
         />
       </div>
+
+      <GroupMembersModal
+        open={openGroupMembers}
+        onClose={() => setOpenGroupMembers(false)}
+        chat={selectedChat}
+        currentUserId={session?.user?.id}
+      />
     </div>
   );
 }

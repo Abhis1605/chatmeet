@@ -4,6 +4,7 @@ import { Server, Socket } from 'socket.io'
 import { PrismaClient } from '../src/generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import dotenv from 'dotenv'
+import { canSendGroupMessage } from '../src/lib/groupPermissions'
 
 dotenv.config()
 
@@ -120,15 +121,27 @@ io.on('connection', (socket: CustomSocket) => {
                 return
             }
 
-            const isMember = await prisma.chatMember.findFirst({
+            const member = await prisma.chatMember.findFirst({
                 where: {
                     chatId,
                     userId: socket.user?.id
+                },
+                include: {
+                    chat: true
                 }
             })
 
-            if (!isMember){
+            if (!member){
                 console.log('Unauthorized message attempt by', socket.user?.id, 'for chat', chatId)
+                return
+            }
+
+            if (member.chat.isGroup && !canSendGroupMessage(member)){
+                console.log('Read-only group member message attempt by', socket.user?.id, 'for chat', chatId)
+                socket.emit('message-denied', {
+                    chatId,
+                    reason: 'You do not have permission to message in this group.'
+                })
                 return
             }
 
@@ -143,6 +156,9 @@ io.on('connection', (socket: CustomSocket) => {
                     fileName,
                     fileType,
                     fileSize,
+                },
+                include: {
+                    sender: true
                 }
             })
 
