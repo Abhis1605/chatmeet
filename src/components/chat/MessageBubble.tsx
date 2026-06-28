@@ -5,9 +5,10 @@ import { File } from "lucide-react";
 interface Props {
   message: any;
   isMe: boolean;
+  showSender?: boolean;
 }
 
-export default function MessageBubble({ message, isMe }: Props) {
+export default function MessageBubble({ message, isMe, showSender = false }: Props) {
   return (
     <div className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
       <div
@@ -15,6 +16,12 @@ export default function MessageBubble({ message, isMe }: Props) {
           isMe ? "bg-blue-600 rounded-tr-none" : "bg-[#1f2937] rounded-tl-none"
         }`}
       >
+        {showSender && !isMe && (
+          <p className="mb-1 text-[11px] font-medium text-blue-200">
+            {message.sender?.name || message.sender?.email}
+          </p>
+        )}
+
         {/* TEXT */}
         {message.type === "TEXT" && (
           <p className="text-sm text-white wrap-break-word">{message.content}</p>

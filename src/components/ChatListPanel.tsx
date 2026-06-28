@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import ChatSearchCommand from "./ChatSearchCommand";
 import { useSession } from "next-auth/react";
 import { getSocket } from "@/lib/socket";
+import GroupCreateModal from "./group/GroupCreateModal";
+import { Plus } from "lucide-react";
 
 export default function ChatListPanel({ type }: any) {
 
@@ -15,6 +17,7 @@ export default function ChatListPanel({ type }: any) {
   const { chats, setChats } = useChatStore();
 
   const [openSearch, setOpenSearch] = useState(false);
+  const [openGroupCreate, setOpenGroupCreate] = useState(false);
 
   const formatPresence = (user: any) => {
     if (user?.isOnline) return "Online";
@@ -60,15 +63,29 @@ export default function ChatListPanel({ type }: any) {
       <div className="p-3 border-b border-white/10 flex justify-between items-center">
         <h2 className="text-white font-semibold capitalize">{type} chats</h2>
 
-        <button
-          onClick={() => setOpenSearch(true)}
-          className="btn-primary py-1.5! px-4! text-sm! cursor-pointer"
-        >
-          Search
-        </button>
+        {type === "group" ? (
+          <button
+            type="button"
+            title="Create group"
+            aria-label="Create group"
+            onClick={() => setOpenGroupCreate(true)}
+            className="btn-primary py-1.5! px-3! text-sm! cursor-pointer flex items-center gap-1"
+          >
+            <Plus className="w-4 h-4" />
+            Create
+          </button>
+        ) : (
+          <button
+            onClick={() => setOpenSearch(true)}
+            className="btn-primary py-1.5! px-4! text-sm! cursor-pointer"
+          >
+            Search
+          </button>
+        )}
       </div>
 
       <ChatSearchCommand open={openSearch} setOpen={setOpenSearch} />
+      <GroupCreateModal open={openGroupCreate} onClose={() => setOpenGroupCreate(false)} />
 
       {/* CHAT LIST */}
       <div className="flex-1 overflow-y-auto">
@@ -78,6 +95,12 @@ export default function ChatListPanel({ type }: any) {
           )?.user;
 
           const lastMessage = chat.messages?.[0];
+          const title = chat.isGroup
+            ? chat.name
+            : otherUser?.name || otherUser?.email;
+          const subtitle = chat.isGroup
+            ? `${chat.members?.length ?? 0} members`
+            : formatPresence(otherUser);
 
           return (
             <div
@@ -88,22 +111,22 @@ export default function ChatListPanel({ type }: any) {
               {/* Avatar */}
               <img
                 alt="avatar-img"
-                src={otherUser?.image || "/default-avatar.png"}
+                src={chat.isGroup ? "/chatmeet-collapsed-logo.png" : otherUser?.image || "/default-avatar.png"}
                 className="w-10 h-10 rounded-full object-cover"
               />
 
               {/* Info */}
-              <div className="flex-1">
-                <p className="text-white text-sm font-medium">
-                  {otherUser?.email}
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-sm font-medium truncate">
+                  {title}
                 </p>
 
                 <p className="text-gray-400 text-xs truncate">
                   {lastMessage?.content || "No messages yet"}
                 </p>
 
-                <p className={`text-xs mt-1 ${otherUser?.isOnline ? "text-green-400" : "text-gray-500"}`}>
-                  {formatPresence(otherUser)}
+                <p className={`text-xs mt-1 ${!chat.isGroup && otherUser?.isOnline ? "text-green-400" : "text-gray-500"}`}>
+                  {subtitle}
                 </p>
               </div>
             </div>

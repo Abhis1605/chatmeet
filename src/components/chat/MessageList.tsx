@@ -6,9 +6,10 @@ import MessageBubble from "./MessageBubble";
 interface Props {
   messages: any[];
   session: any;
+  isGroup?: boolean;
 }
 
-export default function MessageList({ messages, session }: Props) {
+export default function MessageList({ messages, session, isGroup = false }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -30,6 +31,7 @@ export default function MessageList({ messages, session }: Props) {
           key={message.id}
           message={message}
           isMe={message.senderId === session?.user?.id}
+          showSender={isGroup}
         />
       ))}
 
