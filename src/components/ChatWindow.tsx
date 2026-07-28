@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { connectSocket } from "@/lib/socket";
-import { useChatStore } from "@/store/useChatStore";
+import { useEffect, useRef, useState, useMemo } from "react";
+import { useChatUIStore } from "@/store/chat-ui-store";
 import { useSession } from "next-auth/react";
-import { Socket } from "socket.io-client";
 import ChatHeader from "./chat/ChatHeader";
 import MessageList from "./chat/MessageList";
 import ChatInput from "./chat/ChatInput";
@@ -12,19 +10,30 @@ import { useUploadThing } from "@/lib/uploadthing";
 import GroupMembersModal from "./group/GroupMembersModal";
 import { canSendGroupMessage } from "@/lib/groupPermissions";
 import { showError } from "@/lib/toast";
+import { useChats } from "@/hooks/queries/use-chats";
+import { useMessages } from "@/hooks/queries/use-messages";
+import { useSocketContext } from "@/providers/socket-provider";
+import { useSendMessage } from "@/hooks/mutations/use-send-message";
+import { useMarkAsRead } from "@/hooks/mutations/use-mark-as-read";
 
 export default function ChatWindow() {
-  const { selectedChat, updateLastMessage } = useChatStore();
+  const { activeChatId, activeTab } = useChatUIStore();
   const { data: session } = useSession();
 
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [messages, setMessages] = useState<any[]>([]);
+  const { data: chats } = useChats(activeTab);
+  const selectedChat = useMemo(
+    () => chats?.find((c) => c.id === activeChatId),
+    [chats, activeChatId]
+  );
+
+  const { socket } = useSocketContext();
+  const { data: messages = [] } = useMessages(activeChatId);
+  const { mutate: sendMessageMutation } = useSendMessage();
+
+  const { mutate: markAsRead } = useMarkAsRead();
+
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [otherUserPresence, setOtherUserPresence] = useState<{
-    isOnline?: boolean;
-    lastSeen?: string | null;
-  }>({});
   const [uploading, setUploading] = useState(false);
   const [openGroupMembers, setOpenGroupMembers] = useState(false);
 
@@ -36,31 +45,25 @@ export default function ChatWindow() {
   const otherUser = selectedChat?.members?.find(
     (member: any) => member.user.id !== session?.user?.id,
   )?.user;
+  
   const currentMember = selectedChat?.members?.find(
     (member: any) =>
       member.userId === session?.user?.id || member.user?.id === session?.user?.id,
   );
+  
   const canSendMessage = selectedChat?.isGroup
     ? canSendGroupMessage(currentMember)
     : true;
-
-  useEffect(() => {
-    if (!session) return;
-
-    const token = (session as any).accessToken;
-    setSocket(connectSocket(token));
-  }, [session]);
 
   useEffect(() => {
     selectedChatRef.current = selectedChat;
   }, [selectedChat]);
 
   useEffect(() => {
-    setOtherUserPresence({
-      isOnline: otherUser?.isOnline,
-      lastSeen: otherUser?.lastSeen,
-    });
-  }, [otherUser?.id, otherUser?.isOnline, otherUser?.lastSeen]);
+    if (activeChatId) {
+      markAsRead(activeChatId);
+    }
+  }, [activeChatId, markAsRead]);
 
   useEffect(() => {
     return () => {
@@ -71,30 +74,13 @@ export default function ChatWindow() {
   }, []);
 
   useEffect(() => {
-    if (!selectedChat?.id) return;
-
-    setMessages([]);
-    setIsTyping(false);
-
-    const fetchMessages = async () => {
-      const res = await fetch(`/api/message/${selectedChat.id}`);
-      const data = await res.json();
-      setMessages(data);
-    };
-
-    fetchMessages();
-  }, [selectedChat]);
+    if (!selectedChat?.id) {
+      setIsTyping(false);
+    }
+  }, [selectedChat?.id]);
 
   useEffect(() => {
     if (!socket || !session) return;
-
-    const handleNewMessage = (msg: any) => {
-      if (msg.chatId === selectedChatRef.current?.id) {
-        setMessages((prev) => [...prev, msg]);
-      }
-
-      updateLastMessage(msg);
-    };
 
     const handleUserTyping = (data: any) => {
       if (data.userId !== session?.user?.id && selectedChatRef.current?.id) {
@@ -108,14 +94,7 @@ export default function ChatWindow() {
       }
     };
 
-    const handlePresenceChanged = (data: any) => {
-      if (data.userId === otherUser?.id) {
-        setOtherUserPresence({
-          isOnline: data.isOnline,
-          lastSeen: data.lastSeen,
-        });
-      }
-    };
+
 
     const handleMessageDenied = (data: any) => {
       if (data.chatId === selectedChatRef.current?.id) {
@@ -123,20 +102,16 @@ export default function ChatWindow() {
       }
     };
 
-    socket.on("new-message", handleNewMessage);
     socket.on("user-typing", handleUserTyping);
     socket.on("user-stop-typing", handleUserStopTyping);
-    socket.on("user-presence-changed", handlePresenceChanged);
     socket.on("message-denied", handleMessageDenied);
 
     return () => {
-      socket.off("new-message", handleNewMessage);
       socket.off("user-typing", handleUserTyping);
       socket.off("user-stop-typing", handleUserStopTyping);
-      socket.off("user-presence-changed", handlePresenceChanged);
       socket.off("message-denied", handleMessageDenied);
     };
-  }, [socket, session, updateLastMessage, otherUser?.id]);
+  }, [socket, session, otherUser?.id]);
 
   useEffect(() => {
     if (!selectedChat?.id || !socket) return;
@@ -155,7 +130,7 @@ export default function ChatWindow() {
       return;
     }
 
-    socket.emit("send-message", {
+    sendMessageMutation({
       chatId: selectedChat.id,
       type: "TEXT",
       content: input,
@@ -198,15 +173,15 @@ export default function ChatWindow() {
 
   const presenceLabel = isTyping
     ? "Typing..."
-    : otherUserPresence.isOnline
+    : otherUser?.isOnline
       ? "Online"
-      : otherUserPresence.lastSeen
+      : otherUser?.lastSeen
         ? `Last seen ${new Intl.DateTimeFormat("en", {
             hour: "numeric",
             minute: "2-digit",
             month: "short",
             day: "numeric",
-          }).format(new Date(otherUserPresence.lastSeen))}`
+          }).format(new Date(otherUser.lastSeen))}`
         : "Offline";
 
   return (
@@ -214,9 +189,9 @@ export default function ChatWindow() {
       <ChatHeader
         otherUser={otherUser}
         presenceLabel={presenceLabel}
-          isTyping={isTyping}
-          chat={selectedChat}
-          onManageGroup={() => setOpenGroupMembers(true)}
+        isTyping={isTyping}
+        chat={selectedChat}
+        onManageGroup={() => setOpenGroupMembers(true)}
       />
 
       <MessageList
@@ -225,7 +200,7 @@ export default function ChatWindow() {
         isGroup={Boolean(selectedChat?.isGroup)}
       />
 
-      <div className="p-4  gap-2 border-t border-white/10">
+      <div className="p-4 gap-2 border-t border-white/10">
         <ChatInput
           input={input}
           onChange={handleTyping}
@@ -241,14 +216,12 @@ export default function ChatWindow() {
 
             try {
               setUploading(true);
-
               const uploaded = await startUpload([file]);
 
               if (!uploaded?.length) return;
-
               const result = uploaded[0];
 
-              socket.emit("send-message", {
+              sendMessageMutation({
                 chatId: selectedChat.id,
                 type: file.type.startsWith("image/") ? "IMAGE" : "FILE",
                 fileUrl: result.serverData.url,

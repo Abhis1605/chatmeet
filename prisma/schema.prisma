@@ -58,6 +58,7 @@ model ChatMember {
   chatId String
   role ChatMemberRole @default(MEMBER)
   canSend Boolean @default(false)
+  lastReadAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])
   chat Chat @relation(fields: [chatId], references: [id])

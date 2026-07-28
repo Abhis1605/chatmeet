@@ -1,12 +1,18 @@
 "use client";
 
 import { canManageGroup, GROUP_ROLES } from "@/lib/groupPermissions";
-import { showError, showSuccess } from "@/lib/toast";
 import { useDebounce } from "@/hooks/useDebounce";
-import { useChatStore } from "@/store/useChatStore";
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "cmdk";
 import { Shield, Trash2, UserPlus, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { useUserSearch } from "@/hooks/queries/use-user-search";
+import {
+  useAddGroupMember,
+  useUpdateGroupMember,
+  useRemoveGroupMember,
+  useDeleteGroup,
+} from "@/hooks/mutations/use-group-member";
+import type { ChatMemberRole } from "@/types/dto/chat.dto";
 
 interface GroupMembersModalProps {
   open: boolean;
@@ -21,11 +27,17 @@ export default function GroupMembersModal({
   chat,
   currentUserId,
 }: GroupMembersModalProps) {
-  const { updateChat, removeChat } = useChatStore();
   const [search, setSearch] = useState("");
-  const [results, setResults] = useState<any[]>([]);
-  const [workingId, setWorkingId] = useState<string | null>(null);
   const debounced = useDebounce(search, 400);
+
+  const { data: allSearchResults = [] } = useUserSearch(debounced);
+
+  const { mutate: addMember, isPending: isAdding } = useAddGroupMember();
+  const { mutate: updateMember, isPending: isUpdating } = useUpdateGroupMember();
+  const { mutate: removeMember, isPending: isRemoving } = useRemoveGroupMember();
+  const { mutate: deleteGroup, isPending: isDeleting } = useDeleteGroup();
+
+  const [workingId, setWorkingId] = useState<string | null>(null);
 
   const currentMember = chat?.members?.find(
     (member: any) => member.userId === currentUserId || member.user?.id === currentUserId,
@@ -36,20 +48,9 @@ export default function GroupMembersModal({
     [chat?.members],
   );
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      if (!debounced) {
-        setResults([]);
-        return;
-      }
-
-      const res = await fetch(`/api/user/search?email=${debounced}`);
-      const data = await res.json();
-      setResults(data.filter((user: any) => !memberUserIds.has(user.id)));
-    };
-
-    if (open && canManage) fetchUsers();
-  }, [debounced, open, canManage, memberUserIds]);
+  const results = useMemo(() => {
+    return allSearchResults.filter((user) => !memberUserIds.has(user.id));
+  }, [allSearchResults, memberUserIds]);
 
   useEffect(() => {
     if (!open) return;
@@ -62,91 +63,48 @@ export default function GroupMembersModal({
     return () => window.removeEventListener("keydown", handleEsc);
   }, [open, onClose]);
 
-  const request = async (path: string, init: RequestInit) => {
-    const res = await fetch(path, init);
-    const data = await res.json();
-
-    if (!res.ok) {
-      showError(data.error || "Group update failed");
-      return null;
-    }
-
-    return data;
-  };
-
-  const addMember = async (user: any) => {
+  const handleAddMember = (user: any) => {
     setWorkingId(user.id);
-    try {
-      const data = await request(`/api/group/${chat.id}/members`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+    addMember(
+      { chatId: chat.id, userId: user.id },
+      {
+        onSettled: () => setWorkingId(null),
+        onSuccess: () => {
+          setSearch("");
         },
-        body: JSON.stringify({ userId: user.id }),
-      });
-
-      if (data) {
-        updateChat(data);
-        setSearch("");
-        setResults([]);
-        showSuccess("Member added");
       }
-    } finally {
-      setWorkingId(null);
-    }
+    );
   };
 
-  const updateMember = async (member: any, body: any) => {
+  const handleUpdateMember = (member: any, body: any) => {
     setWorkingId(member.id);
-    try {
-      const data = await request(`/api/group/${chat.id}/members`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ memberId: member.id, ...body }),
-      });
-
-      if (data) updateChat(data);
-    } finally {
-      setWorkingId(null);
-    }
-  };
-
-  const removeMember = async (member: any) => {
-    setWorkingId(member.id);
-    try {
-      const data = await request(
-        `/api/group/${chat.id}/members?memberId=${member.id}`,
-        {
-          method: "DELETE",
-        },
-      );
-
-      if (data) {
-        updateChat(data);
-        showSuccess("Member removed");
+    updateMember(
+      { chatId: chat.id, memberId: member.id, ...body },
+      {
+        onSettled: () => setWorkingId(null),
       }
-    } finally {
-      setWorkingId(null);
-    }
+    );
   };
 
-  const deleteGroup = async () => {
+  const handleRemoveMember = (member: any) => {
+    setWorkingId(member.id);
+    removeMember(
+      { chatId: chat.id, memberId: member.id },
+      {
+        onSettled: () => setWorkingId(null),
+      }
+    );
+  };
+
+  const handleDeleteGroup = () => {
     setWorkingId(chat.id);
-    try {
-      const data = await request(`/api/group/${chat.id}`, {
-        method: "DELETE",
-      });
-
-      if (data?.success) {
-        removeChat(chat.id);
-        showSuccess("Group deleted");
-        onClose();
+    deleteGroup(
+      { chatId: chat.id },
+      {
+        onSettled: () => setWorkingId(null),
+        onSuccess: () => onClose(),
       }
-    } finally {
-      setWorkingId(null);
-    }
+    );
   };
 
   if (!open || !chat) return null;
@@ -190,7 +148,7 @@ export default function GroupMembersModal({
                   <CommandItem
                     key={user.id}
                     value={`${user.name} ${user.email}`}
-                    onSelect={() => addMember(user)}
+                    onSelect={() => handleAddMember(user)}
                     className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/10 transition"
                   >
                     <img
@@ -215,7 +173,7 @@ export default function GroupMembersModal({
             {chat.members?.map((member: any) => {
               const isCreator = member.role === GROUP_ROLES.CREATOR;
               const isAdmin = member.role === GROUP_ROLES.ADMIN;
-              const disabled = !canManage || isCreator || workingId === member.id;
+              const disabled = !canManage || isCreator || workingId === member.id || isUpdating || isRemoving || isAdding;
 
               return (
                 <div
@@ -245,7 +203,7 @@ export default function GroupMembersModal({
                     title={isAdmin ? "Make member" : "Make admin"}
                     aria-label={isAdmin ? "Make member" : "Make admin"}
                     onClick={() =>
-                      updateMember(member, {
+                      handleUpdateMember(member, {
                         role: isAdmin ? GROUP_ROLES.MEMBER : GROUP_ROLES.ADMIN,
                       })
                     }
@@ -260,7 +218,7 @@ export default function GroupMembersModal({
                       checked={isCreator || isAdmin || Boolean(member.canSend)}
                       disabled={disabled || isAdmin}
                       onChange={(e) =>
-                        updateMember(member, {
+                        handleUpdateMember(member, {
                           canSend: e.target.checked,
                         })
                       }
@@ -274,7 +232,7 @@ export default function GroupMembersModal({
                     disabled={disabled}
                     title="Remove member"
                     aria-label="Remove member"
-                    onClick={() => removeMember(member)}
+                    onClick={() => handleRemoveMember(member)}
                     className="p-2 rounded-md text-gray-400 hover:text-red-300 hover:bg-red-500/10 disabled:opacity-40 disabled:hover:bg-transparent transition"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -287,11 +245,11 @@ export default function GroupMembersModal({
           {canManage && (
             <button
               type="button"
-              disabled={workingId === chat.id}
-              onClick={deleteGroup}
+              disabled={workingId === chat.id || isDeleting}
+              onClick={handleDeleteGroup}
               className="w-full rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-200 hover:bg-red-500/20 disabled:opacity-60 transition"
             >
-              {workingId === chat.id ? "Deleting..." : "Delete Group"}
+              {workingId === chat.id || isDeleting ? "Deleting..." : "Delete Group"}
             </button>
           )}
         </div>

@@ -9,21 +9,22 @@ import {
 } from "cmdk";
 
 import { useDebounce } from "@/hooks/useDebounce";
-import { useChatStore } from "@/store/useChatStore";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
+import { useUserSearch } from "@/hooks/queries/use-user-search";
+import { useCreateChat } from "@/hooks/mutations/use-create-chat";
 
 export default function ChatSearchCommand({
   open,
   setOpen,
 }: any) {
-  const { setSelectedChat, addChat } = useChatStore();
   const { data: session } = useSession();
 
   const [search, setSearch] = useState("");
-  const [results, setResults] = useState<any[]>([]);
-
   const debounced = useDebounce(search, 400);
+
+  const { data: results = [] } = useUserSearch(debounced);
+  const { mutate: createChat } = useCreateChat();
 
   const formatPresence = (user: any) => {
     if (user?.isOnline) return "Online";
@@ -37,68 +38,28 @@ export default function ChatSearchCommand({
     }).format(new Date(user.lastSeen))}`;
   };
 
-  // Fetch users
-  useEffect(() => {
-    const fetchUsers = async () => {
-      if (!debounced) {
-        setResults([]);
-        return;
-      }
-
-      try {
-        const res = await fetch(`/api/user/search?email=${debounced}`);
-        const data = await res.json();
-        setResults(data);
-      } catch (error) {
-        console.error("Search error:", error);
-      }
-    };
-
-    fetchUsers();
-  }, [debounced]);
-
   // Close on ESC
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
 
-    window.addEventListener("keydown", handleEsc);
+    if (open) {
+      window.addEventListener("keydown", handleEsc);
+    }
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [setOpen]);
+  }, [open, setOpen]);
 
   // Start chat
-  const startChat = async (user: any) => {
+  const startChat = (user: any) => {
     if (!session?.user?.id) return;
-
-    try {
-      const res = await fetch("/api/chat/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: session.user.id,
-          targetUserId: user.id,
-        }),
-      });
-
-      const chat = await res.json();
-      
-      if (res.status === 500) {
-        console.error("Server 500 error during chat creation:", chat);
-        alert("Session error. Please log out and log back in to refresh your ID.");
-        return;
+    
+    createChat(user.id, {
+      onSuccess: () => {
+        setOpen(false);
+        setSearch("");
       }
-
-      addChat(chat)
-      setSelectedChat(chat);
-      setOpen(false);
-      setSearch("");
-      setResults([]);
-    } catch (error) {
-      console.error("Chat creation error:", error);
-    }
+    });
   };
 
   // Don't render if closed

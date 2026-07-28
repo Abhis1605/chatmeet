@@ -2,24 +2,32 @@
 
 import AuthCard from "@/components/AuthCard";
 import OtpInput from "@/components/OtpInput";
-import { showError, showSuccess } from "@/lib/toast";
+import { useVerifyOtp } from "@/hooks/mutations/use-verify-otp";
+import { useResendOtp } from "@/hooks/mutations/use-resend-otp";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+
 
 export default function VerifyPage() {
-  const [otp, setOtp] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [timer, setTimer] = useState(60);
-  const [resendLoading, setResendLoading] = useState(false);
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-linear-to-br from-[#0b1220] to-[#111827] text-white">Loading...</div>}>
+      <VerifyPageContent />
+    </Suspense>
+  );
+}
 
-  const router = useRouter()
+function VerifyPageContent() {
+  const [otp, setOtp] = useState("");
+  const [timer, setTimer] = useState(60);
 
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "";
+
+  const { mutate: verifyOtp, isPending: isVerifying } = useVerifyOtp();
+  const { mutate: resendOtp, isPending: isResending } = useResendOtp();
+
   useEffect(() => {
     if (timer === 0) return;
-
-    if (timer > 0) return;
 
     const interval = setInterval(() => {
       setTimer((prev) => prev - 1);
@@ -28,61 +36,22 @@ export default function VerifyPage() {
     return () => clearInterval(interval);
   }, [timer]);
 
-  console.log(otp, email);
-
-  const handleVerify = async () => {
-    setLoading(true);
-
-    const res = await fetch("/api/auth/verify-otp", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email, otp }),
-    });
-
-    const data = await res.json();
-
-    if (data.error) {
-      showError(data.error);
-      setLoading(false);
-    } else {
-      showSuccess('Email verified Successfully')
-      router.push('/login')
-    }
+  const handleVerify = () => {
+    verifyOtp({ email, otp });
   };
 
-  const handleResend = async () => {
-    if (!email) {
-      showError("Email missing");
-      return;
-    }
-
-    setResendLoading(true);
-
-    try {
-      const res = await fetch("/api/auth/resend-otp", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+  const handleResend = () => {
+    if (!email) return;
+    resendOtp(
+      { email },
+      {
+        onSuccess: (data) => {
+          if (!data.error) {
+            setTimer(60); // reset timer on successful resend
+          }
         },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await res.json();
-
-      if (data.error) {
-        showError(data.error)
-      } else {
-        showSuccess('New OTP sent to your email')
-        setTimer(60); // reset timer
       }
-    } catch (error) {
-      console.error(error);
-      showError("Something went wrong");
-    } finally {
-      setResendLoading(false);
-    }
+    );
   };
 
   return (
@@ -117,10 +86,10 @@ export default function VerifyPage() {
         {/* Verify Button */}
         <button
           onClick={handleVerify}
-          disabled={loading || otp.length < 6}
+          disabled={isVerifying || otp.length < 6}
           className="btn-primary w-full mt-6 disabled:opacity-50"
         >
-          {loading ? "Verifying..." : "Verify Account →"}
+          {isVerifying ? "Verifying..." : "Verify Account →"}
         </button>
 
         {/* Resend */}
@@ -130,10 +99,10 @@ export default function VerifyPage() {
           ) : (
             <button
               onClick={handleResend}
-              disabled={resendLoading}
+              disabled={isResending}
               className="text-blue-400 disabled:opacity-50"
             >
-              {resendLoading ? "Sending..." : "Resend Code"}
+              {isResending ? "Sending..." : "Resend Code"}
             </button>
           )}
         </div>
@@ -141,3 +110,4 @@ export default function VerifyPage() {
     </div>
   );
 }
+

@@ -4,11 +4,10 @@ import { useState } from "react";
 import { SIDEBAR_TOP, SIDEBAR_BOTTOM } from "@/lib/sidebarConfig";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
-import { useChatStore } from "@/store/useChatStore";
+import { useChatUIStore } from "@/store/chat-ui-store";
 
 export default function Sidebar() {
-  const { activeTab, setActiveTab } = useChatStore()
-  const [collapsed, setCollapsed] = useState(true);
+  const { activeTab, setActiveTab, sidebarCollapsed: collapsed, setSidebarCollapsed: setCollapsed } = useChatUIStore();
 
   return (
     <div
@@ -26,6 +25,7 @@ export default function Sidebar() {
               height={100}
               alt="chatmeet-logo"
             />
+
           ) : (
             <Image
               src="/chatmeet-collapsed-logo.png"
@@ -44,7 +44,7 @@ export default function Sidebar() {
             return (
               <div key={item.id} className="relative group">
                 <button
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => setActiveTab(item.id as "group" | "personal")}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition
                   ${collapsed ? "justify-center" : ""}
                   ${
