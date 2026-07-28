@@ -3,22 +3,12 @@
 import Sidebar from "@/components/Sidebar";
 import ChatListPanel from "@/components/ChatListPanel";
 import ChatWindow from "@/components/ChatWindow";
-import { useChatStore } from "@/store/useChatStore";
+import { useChatUIStore } from "@/store/chat-ui-store";
 import { useSession } from "next-auth/react";
-import { useEffect } from "react";
-import { connectSocket } from "@/lib/socket";
 
 export default function ChatPage() {
-  const { activeTab, selectedChat } = useChatStore();
-  const { data: session, status } = useSession();
-
-  // Initialize socket globally for the chat page
-  useEffect(() => {
-    if (status === "authenticated" && session) {
-      const token = (session as any).accessToken;
-      connectSocket(token);
-    }
-  }, [session, status]);
+  const { activeTab, activeChatId } = useChatUIStore();
+  const { status } = useSession();
 
   // Handle loading state
   if (status === "loading") {
@@ -40,7 +30,7 @@ export default function ChatPage() {
 
       {/* CHAT WINDOW */}
       <div className="flex-1">
-        {selectedChat ? (
+        {activeChatId ? (
           <ChatWindow />
         ) : (
           <div className="h-full flex items-center justify-center text-gray-400">

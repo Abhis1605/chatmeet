@@ -35,7 +35,8 @@ export default function OtpInput({ length = 6, onChange }: Props) {
           type="text"
           inputMode="numeric"
           maxLength={1}
-          ref={(el) => (inputs.current[index] = el)}
+          ref={(el) => { inputs.current[index] = el; }}
+
           onChange={(e) => handleChange(e.target.value, index)}
           onKeyDown={(e) => handleKeyDown(e, index)}
           className="w-12 h-14 text-center text-lg rounded-lg bg-[#1f2937] text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"

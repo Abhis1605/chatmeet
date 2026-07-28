@@ -8,16 +8,18 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useAuthStore } from "@/store/auth-store";
+
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState<'credentials' | 'google' | 'github' | null>(null)
+  const { loadingProvider, setLoadingProvider } = useAuthStore();
 
   const router = useRouter()
 
   const handleLogin = async () => {
-    setLoading('credentials')
+    setLoadingProvider('credentials')
     const res = await signIn("credentials", {
       email,
       password,
@@ -31,16 +33,17 @@ export default function LoginPage() {
       router.push('/chat')
     }
 
-    setLoading(null)
+    setLoadingProvider(null)
   };
 
   const handleOAuth = async (provider: "google" | "github") => {
-    setLoading(provider);
+    setLoadingProvider(provider);
 
     const res = await signIn(provider, { callbackUrl: "/chat?login=success" });
   };
 
   return (
+
     <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-[#0b1220] to-[#111827]">
 
       <AuthCard>
@@ -74,10 +77,10 @@ export default function LoginPage() {
         {/* Button */}
         <button
           onClick={handleLogin}
-          disabled={ loading !== null }
+          disabled={ loadingProvider !== null }
           className="btn-primary w-full mt-6"
         >
-          { loading === 'credentials' ? (
+          { loadingProvider === 'credentials' ? (
             <span className="flex justify-center items-center gap-2">
               <span className="animate-spin h-4 h-4 w-4 border-2 border-white border-t-transparent rounded-full">
               </span>
@@ -97,10 +100,10 @@ export default function LoginPage() {
         <div className=" flex gap-3">
           <button
             onClick={() => handleOAuth('google')}
-            disabled={loading !== null }
+            disabled={loadingProvider !== null }
             className="flex items-center justify-center flex-1 gap-2 py-3 rounded-lg border border-gray-600 text-white hover:bg-gray-800"
           >
-            {loading === "google" ? (
+            {loadingProvider === "google" ? (
               <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
             ) : (
               <>
@@ -119,7 +122,7 @@ export default function LoginPage() {
             onClick={() => handleOAuth('github')}
             className="flex items-center justify-center gap-2 flex-1 py-3 rounded-lg border border-gray-600 text-white hover:bg-gray-800"
           >
-             {loading === "github" ? (
+             {loadingProvider === "github" ? (
               <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
             ) : (
               <>

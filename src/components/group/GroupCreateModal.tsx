@@ -1,11 +1,12 @@
 "use client";
 
 import { useDebounce } from "@/hooks/useDebounce";
-import { showError, showSuccess } from "@/lib/toast";
-import { useChatStore } from "@/store/useChatStore";
+import { showError } from "@/lib/toast";
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "cmdk";
 import { Check, Plus, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { useUserSearch } from "@/hooks/queries/use-user-search";
+import { useCreateGroup } from "@/hooks/mutations/use-create-group";
 
 interface GroupCreateModalProps {
   open: boolean;
@@ -13,33 +14,18 @@ interface GroupCreateModalProps {
 }
 
 export default function GroupCreateModal({ open, onClose }: GroupCreateModalProps) {
-  const { addChat, setSelectedChat } = useChatStore();
   const [name, setName] = useState("");
   const [search, setSearch] = useState("");
-  const [results, setResults] = useState<any[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<any[]>([]);
-  const [saving, setSaving] = useState(false);
   const debounced = useDebounce(search, 400);
+
+  const { data: results = [] } = useUserSearch(debounced);
+  const { mutate: createGroupMutation, isPending: saving } = useCreateGroup();
 
   const selectedIds = useMemo(
     () => new Set(selectedUsers.map((user) => user.id)),
     [selectedUsers],
   );
-
-  useEffect(() => {
-    const fetchUsers = async () => {
-      if (!debounced) {
-        setResults([]);
-        return;
-      }
-
-      const res = await fetch(`/api/user/search?email=${debounced}`);
-      const data = await res.json();
-      setResults(data);
-    };
-
-    if (open) fetchUsers();
-  }, [debounced, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -64,44 +50,27 @@ export default function GroupCreateModal({ open, onClose }: GroupCreateModalProp
   const reset = () => {
     setName("");
     setSearch("");
-    setResults([]);
     setSelectedUsers([]);
   };
 
-  const createGroup = async () => {
+  const createGroup = () => {
     if (!name.trim()) {
       showError("Group name is required");
       return;
     }
 
-    try {
-      setSaving(true);
-      const res = await fetch("/api/group", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+    createGroupMutation(
+      {
+        name,
+        memberIds: selectedUsers.map((user) => user.id),
+      },
+      {
+        onSuccess: () => {
+          reset();
+          onClose();
         },
-        body: JSON.stringify({
-          name,
-          memberIds: selectedUsers.map((user) => user.id),
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        showError(data.error || "Could not create group");
-        return;
       }
-
-      addChat(data);
-      setSelectedChat(data);
-      showSuccess("Group created");
-      reset();
-      onClose();
-    } finally {
-      setSaving(false);
-    }
+    );
   };
 
   if (!open) return null;

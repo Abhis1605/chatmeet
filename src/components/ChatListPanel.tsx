@@ -1,20 +1,18 @@
 "use client";
 
-import { useChatStore } from "@/store/useChatStore";
-import { useEffect, useState } from "react";
+import { useChatUIStore } from "@/store/chat-ui-store";
+import { useState } from "react";
 import ChatSearchCommand from "./ChatSearchCommand";
 import { useSession } from "next-auth/react";
-import { getSocket } from "@/lib/socket";
 import GroupCreateModal from "./group/GroupCreateModal";
 import { Plus } from "lucide-react";
+import { useChats } from "@/hooks/queries/use-chats";
 
 export default function ChatListPanel({ type }: any) {
+  const { data: session } = useSession();
 
-  const { data: session } = useSession()
-
-  const { setSelectedChat, selectedChat } = useChatStore();
-
-  const { chats, setChats } = useChatStore();
+  const { setActiveChatId, activeChatId } = useChatUIStore();
+  const { data: chats, isLoading } = useChats(type);
 
   const [openSearch, setOpenSearch] = useState(false);
   const [openGroupCreate, setOpenGroupCreate] = useState(false);
@@ -31,31 +29,17 @@ export default function ChatListPanel({ type }: any) {
     }).format(new Date(user.lastSeen))}`;
   };
 
-  const fetchChats = async () => {
-    const res = await fetch(`/api/chat/list?type=${type}`);
-    if (res.ok) {
-      const data = await res.json();
-      setChats(data);
-    }
+  const formatRelativeTime = (dateStr: string) => {
+    const diff = new Date().getTime() - new Date(dateStr).getTime();
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 1) return "Just now";
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(new Date(dateStr));
   };
-
-  useEffect(() => {
-    fetchChats();
-  }, [type, setChats]);
-
-  // Listen for global chat updates (new chats, etc)
-  useEffect(() => {
-    const socket = getSocket();
-    if (!socket) return;
-
-    socket.on('chat-updated', () => {
-      fetchChats();
-    });
-
-    return () => {
-      socket.off('chat-updated');
-    };
-  }, [type]);
 
   return (
     <div className="w-[320px] border-r border-white/10 flex flex-col">
@@ -89,49 +73,85 @@ export default function ChatListPanel({ type }: any) {
 
       {/* CHAT LIST */}
       <div className="flex-1 overflow-y-auto">
-        {Array.isArray(chats) && chats.map((chat, index) => {
-          const otherUser = chat.members?.find(
-            (m: any) => m.user.id !== session?.user?.id,
-          )?.user;
+        {isLoading && <div className="p-4 text-center text-gray-500 text-sm">Loading...</div>}
+        {Array.isArray(chats) &&
+          [...chats].sort((a, b) => {
+            const dateA = a.lastMessage?.createdAt || a.updatedAt;
+            const dateB = b.lastMessage?.createdAt || b.updatedAt;
+            return new Date(dateB).getTime() - new Date(dateA).getTime();
+          }).map((chat, index) => {
+            const otherUser = chat.members?.find(
+              (m: any) => m.user.id !== session?.user?.id,
+            )?.user;
 
-          const lastMessage = chat.messages?.[0];
-          const title = chat.isGroup
-            ? chat.name
-            : otherUser?.name || otherUser?.email;
-          const subtitle = chat.isGroup
-            ? `${chat.members?.length ?? 0} members`
-            : formatPresence(otherUser);
+            const lastMessage = chat.lastMessage;
+            const title = chat.isGroup
+              ? chat.name
+              : otherUser?.name || otherUser?.email;
+            const subtitle = chat.isGroup
+              ? `${chat.members?.length ?? 0} members`
+              : formatPresence(otherUser);
+            
+            const hasUnread = (chat.unreadCount || 0) > 0;
 
-          return (
-            <div
-              key={chat.id || index}
-              onClick={() => setSelectedChat(chat)}
-              className={`p-3 flex items-center gap-3 cursor-pointer transition ${selectedChat?.id === chat.id ? 'bg-white/10' : 'hover:bg-white/5'}`}
-            >
-              {/* Avatar */}
-              <img
-                alt="avatar-img"
-                src={chat.isGroup ? "/chatmeet-collapsed-logo.png" : otherUser?.image || "/default-avatar.png"}
-                className="w-10 h-10 rounded-full object-cover"
-              />
+            return (
+              <div
+                key={chat.id || index}
+                onClick={() => setActiveChatId(chat.id)}
+                className={`p-3 flex items-center gap-3 cursor-pointer transition ${
+                  activeChatId === chat.id ? "bg-white/10" : "hover:bg-white/5"
+                }`}
+              >
+                {/* Avatar */}
+                <img
+                  alt="avatar-img"
+                  src={
+                    chat.isGroup
+                      ? "/chatmeet-collapsed-logo.png"
+                      : otherUser?.image || "/default-avatar.png"
+                  }
+                  className="w-10 h-10 rounded-full object-cover"
+                />
 
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <p className="text-white text-sm font-medium truncate">
-                  {title}
-                </p>
+                {/* Info */}
+                <div className="flex-1 min-w-0 flex flex-col justify-center">
+                  <div className="flex justify-between items-center mb-1">
+                    <p className={`text-sm truncate ${hasUnread ? "text-white font-bold" : "text-gray-200 font-medium"}`}>
+                      {title}
+                    </p>
+                    {lastMessage?.createdAt && (
+                      <span className="text-[10px] text-gray-500 whitespace-nowrap ml-2">
+                        {formatRelativeTime(lastMessage.createdAt)}
+                      </span>
+                    )}
+                  </div>
 
-                <p className="text-gray-400 text-xs truncate">
-                  {lastMessage?.content || "No messages yet"}
-                </p>
+                  <div className="flex justify-between items-center">
+                    <p className={`text-xs truncate mr-2 ${hasUnread ? "text-gray-200 font-bold" : "text-gray-400"}`}>
+                      {lastMessage?.content ? (lastMessage.content.length > 40 ? lastMessage.content.substring(0, 40) + "..." : lastMessage.content) : "No messages yet"}
+                    </p>
+                    {hasUnread && (
+                      <span className="bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                        {(chat.unreadCount || 0) > 9 ? "9+" : chat.unreadCount}
+                      </span>
+                    )}
+                  </div>
 
-                <p className={`text-xs mt-1 ${!chat.isGroup && otherUser?.isOnline ? "text-green-400" : "text-gray-500"}`}>
-                  {subtitle}
-                </p>
+                  {!hasUnread && (
+                    <p
+                      className={`text-[10px] mt-1 ${
+                        !chat.isGroup && otherUser?.isOnline
+                          ? "text-green-400"
+                          : "text-gray-500"
+                      }`}
+                    >
+                      {subtitle}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
       </div>
     </div>
   );
