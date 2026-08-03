@@ -91,16 +91,15 @@ export default function ChatListPanel({ type }: any) {
             const subtitle = chat.isGroup
               ? `${chat.members?.length ?? 0} members`
               : formatPresence(otherUser);
-            
+
             const hasUnread = (chat.unreadCount || 0) > 0;
 
             return (
               <div
                 key={chat.id || index}
                 onClick={() => setActiveChatId(chat.id)}
-                className={`p-3 flex items-center gap-3 cursor-pointer transition ${
-                  activeChatId === chat.id ? "bg-white/10" : "hover:bg-white/5"
-                }`}
+                className={`p-3 flex items-center gap-3 cursor-pointer transition ${activeChatId === chat.id ? "bg-white/10" : "hover:bg-white/5"
+                  }`}
               >
                 {/* Avatar */}
                 <img
@@ -139,11 +138,10 @@ export default function ChatListPanel({ type }: any) {
 
                   {!hasUnread && (
                     <p
-                      className={`text-[10px] mt-1 ${
-                        !chat.isGroup && otherUser?.isOnline
+                      className={`text-[10px] mt-1 ${!chat.isGroup && otherUser?.isOnline
                           ? "text-green-400"
                           : "text-gray-500"
-                      }`}
+                        }`}
                     >
                       {subtitle}
                     </p>

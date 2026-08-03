@@ -45,12 +45,12 @@ export default function ChatWindow() {
   const otherUser = selectedChat?.members?.find(
     (member: any) => member.user.id !== session?.user?.id,
   )?.user;
-  
+
   const currentMember = selectedChat?.members?.find(
     (member: any) =>
       member.userId === session?.user?.id || member.user?.id === session?.user?.id,
   );
-  
+
   const canSendMessage = selectedChat?.isGroup
     ? canSendGroupMessage(currentMember)
     : true;
@@ -177,11 +177,11 @@ export default function ChatWindow() {
       ? "Online"
       : otherUser?.lastSeen
         ? `Last seen ${new Intl.DateTimeFormat("en", {
-            hour: "numeric",
-            minute: "2-digit",
-            month: "short",
-            day: "numeric",
-          }).format(new Date(otherUser.lastSeen))}`
+          hour: "numeric",
+          minute: "2-digit",
+          month: "short",
+          day: "numeric",
+        }).format(new Date(otherUser.lastSeen))}`
         : "Offline";
 
   return (

@@ -42,12 +42,41 @@ const setUserPresence = async (userId: string, isOnline: boolean) => {
 }
 
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL || '',
+    connectionString: process.env.DATABASE_URL || '',
 })
 
 const prisma = new PrismaClient({ adapter })
 
 const app = express()
+app.use(express.json())
+
+const emitToUsers = (userIds: string[], event: string, payload: unknown) => {
+    for (const userId of userIds) {
+        const socketIds = activeConnections.get(userId)
+        if (!socketIds) continue
+        for (const socketId of socketIds) {
+            io.to(socketId).emit(event, payload)
+        }
+    }
+}
+
+app.post('/notify', (req, res) => {
+    const { event, payload, userIds, chatId } = req.body ?? {}
+
+    if (!event) {
+        return res.status(400).json({ error: 'event is required' })
+    }
+
+    if (Array.isArray(userIds) && userIds.length > 0) {
+        emitToUsers(userIds, event, payload)
+    }
+
+    if (chatId) {
+        io.to(chatId).emit(event, payload)
+    }
+
+    return res.json({ ok: true })
+})
 
 const server = http.createServer(app)
 
@@ -65,7 +94,7 @@ io.use((socket: CustomSocket, next) => {
 
         console.log('Incoming token:', token)
 
-        if (!token){
+        if (!token) {
             return next(new Error('Unauthorized'))
         }
 
@@ -107,17 +136,17 @@ io.on('connection', (socket: CustomSocket) => {
     })
 
     socket.on('join-chat', (chatId: string) => {
-        if(!chatId) return
+        if (!chatId) return
         socket.join(chatId)
         console.log(`User ${socket.user?.email} joined room: ${chatId}`)
     })
 
-    socket.on('send-message', async ({ chatId, content, type, fileUrl, fileName, fileType, fileSize }: { chatId: string, content?: string, type: 'TEXT' | 'IMAGE' | 'FILE' | 'VIDEO', fileUrl?: string, fileName?:string, fileType?: string, fileSize?: number }) => {
+    socket.on('send-message', async ({ chatId, content, type, fileUrl, fileName, fileType, fileSize }: { chatId: string, content?: string, type: 'TEXT' | 'IMAGE' | 'FILE' | 'VIDEO', fileUrl?: string, fileName?: string, fileType?: string, fileSize?: number }) => {
         try {
             console.log(`Message from ${socket.user?.email} to ${chatId}: ${content}`)
-            if (!chatId ) return 
+            if (!chatId) return
 
-            if (type === 'TEXT' && !content){
+            if (type === 'TEXT' && !content) {
                 return
             }
 
@@ -131,12 +160,12 @@ io.on('connection', (socket: CustomSocket) => {
                 }
             })
 
-            if (!member){
+            if (!member) {
                 console.log('Unauthorized message attempt by', socket.user?.id, 'for chat', chatId)
                 return
             }
 
-            if (member.chat.isGroup && !canSendGroupMessage(member)){
+            if (member.chat.isGroup && !canSendGroupMessage(member)) {
                 console.log('Read-only group member message attempt by', socket.user?.id, 'for chat', chatId)
                 socket.emit('message-denied', {
                     chatId,
@@ -214,5 +243,5 @@ io.on('connection', (socket: CustomSocket) => {
 })
 
 server.listen(5000, () => {
-  console.log("Socket server running on http://localhost:5000");
+    console.log("Socket server running on http://localhost:5000");
 });

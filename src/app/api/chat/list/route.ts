@@ -13,10 +13,17 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type");
 
+    const chatFilter =
+      type === "room"
+        ? { isRoom: true }
+        : type === "group"
+          ? { isGroup: true, isRoom: false }
+          : { isGroup: false, isRoom: false };
+
     // FETCH CHATS
     const chats = await prisma.chat.findMany({
       where: {
-        isGroup: type === "group",
+        ...chatFilter,
         members: {
           some: {
             userId: session.user.id,

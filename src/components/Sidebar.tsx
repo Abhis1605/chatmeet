@@ -44,7 +44,11 @@ export default function Sidebar() {
             return (
               <div key={item.id} className="relative group">
                 <button
-                  onClick={() => setActiveTab(item.id as "group" | "personal")}
+                  onClick={() => {
+                    if (item.id === "personal" || item.id === "group" || item.id === "room") {
+                      setActiveTab(item.id);
+                    }
+                  }}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition
                   ${collapsed ? "justify-center" : ""}
                   ${

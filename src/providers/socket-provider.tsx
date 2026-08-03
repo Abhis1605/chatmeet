@@ -13,6 +13,7 @@ import { connectSocket, getSocket } from "@/lib/socket";
 import { queryKeys } from "@/lib/query-keys";
 import type { MessageDto } from "@/types/dto/message.dto";
 import type { ChatDto } from "@/types/dto/chat.dto";
+import type { RoomDto } from "@/types/dto/room.dto";
 import { useSocketStore } from "@/store/socket-store";
 import { useChatUIStore } from "@/store/chat-ui-store";
 
@@ -75,10 +76,12 @@ export default function SocketProvider({
 
       // Check current active chat to decide whether to increment unread count
       const currentActiveChatId = useChatUIStore.getState().activeChatId;
-      const isUnread = currentActiveChatId !== msg.chatId;
+      const currentActiveRoomChatId = useChatUIStore.getState().activeRoomChatId;
+      const isUnread =
+        currentActiveChatId !== msg.chatId && currentActiveRoomChatId !== msg.chatId;
 
-      // Update last message preview in both chat list caches
-      for (const type of ["personal", "group"]) {
+      // Update last message preview in chat list caches
+      for (const type of ["personal", "group"] as const) {
         queryClient.setQueryData<ChatDto[]>(
           queryKeys.chats.list(type),
           (prev) => {
@@ -87,17 +90,17 @@ export default function SocketProvider({
               .map((chat) =>
                 chat.id === msg.chatId
                   ? {
-                      ...chat,
-                      lastMessage: {
-                        id: msg.id,
-                        content: msg.content,
-                        senderId: msg.senderId,
-                        type: msg.type,
-                        createdAt: msg.createdAt
-                      },
-                      unreadCount: isUnread ? (chat.unreadCount || 0) + 1 : chat.unreadCount,
-                      updatedAt: new Date().toISOString(),
-                    }
+                    ...chat,
+                    lastMessage: {
+                      id: msg.id,
+                      content: msg.content,
+                      senderId: msg.senderId,
+                      type: msg.type,
+                      createdAt: msg.createdAt
+                    },
+                    unreadCount: isUnread ? (chat.unreadCount || 0) + 1 : chat.unreadCount,
+                    updatedAt: new Date().toISOString(),
+                  }
                   : chat
               )
               .sort(
@@ -108,6 +111,35 @@ export default function SocketProvider({
           }
         );
       }
+
+      // Update room list cache
+      queryClient.setQueryData<RoomDto[]>(
+        queryKeys.chats.room(),
+        (prev) => {
+          if (!prev) return prev;
+          return prev
+            .map((room) =>
+              room.id === msg.chatId
+                ? {
+                  ...room,
+                  lastMessage: {
+                    id: msg.id,
+                    content: msg.content,
+                    senderId: msg.senderId,
+                    type: msg.type,
+                    createdAt: msg.createdAt,
+                  },
+                  unreadCount: isUnread ? (room.unreadCount || 0) + 1 : room.unreadCount,
+                  updatedAt: new Date().toISOString(),
+                }
+                : room
+            )
+            .sort(
+              (a, b) =>
+                new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+            );
+        }
+      );
     };
 
 
@@ -132,13 +164,13 @@ export default function SocketProvider({
               members: chat.members.map((member) =>
                 member.user.id === data.userId
                   ? {
-                      ...member,
-                      user: {
-                        ...member.user,
-                        isOnline: data.isOnline,
-                        lastSeen: data.lastSeen,
-                      },
-                    }
+                    ...member,
+                    user: {
+                      ...member.user,
+                      isOnline: data.isOnline,
+                      lastSeen: data.lastSeen,
+                    },
+                  }
                   : member
               ),
             }));
@@ -147,9 +179,50 @@ export default function SocketProvider({
       }
     };
 
+    // ── Room events ─────────────────────────────────────────────────────
+    const handleRoomMemberJoined = (data: { chatId: string }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.chats.room() });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.rooms.members(data.chatId),
+      });
+    };
+
+    const handleRoomMemberLeft = (data: { chatId: string; userId: string }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.chats.room() });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.rooms.members(data.chatId),
+      });
+
+      const { activeRoomChatId, setActiveRoomChatId } = useChatUIStore.getState();
+      const sessionUserId = (session as { user?: { id?: string } }).user?.id;
+      if (activeRoomChatId === data.chatId && data.userId === sessionUserId) {
+        setActiveRoomChatId(null);
+      }
+    };
+
+    const handleRoomInviteReceived = () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.invites.pending });
+    };
+
+    const handleRoomDeleted = (data: { chatId: string }) => {
+      queryClient.setQueryData<RoomDto[]>(queryKeys.chats.room(), (prev) => {
+        if (!prev) return prev;
+        return prev.filter((room) => room.id !== data.chatId);
+      });
+
+      const { activeRoomChatId, setActiveRoomChatId } = useChatUIStore.getState();
+      if (activeRoomChatId === data.chatId) {
+        setActiveRoomChatId(null);
+      }
+    };
+
     socket.on("new-message", handleNewMessage);
     socket.on("chat-updated", handleChatUpdated);
     socket.on("user-presence-changed", handlePresenceChanged);
+    socket.on("room-member-joined", handleRoomMemberJoined);
+    socket.on("room-member-left", handleRoomMemberLeft);
+    socket.on("room-invite-received", handleRoomInviteReceived);
+    socket.on("room-deleted", handleRoomDeleted);
 
     return () => {
       socket.off("connect");
@@ -157,6 +230,10 @@ export default function SocketProvider({
       socket.off("new-message", handleNewMessage);
       socket.off("chat-updated", handleChatUpdated);
       socket.off("user-presence-changed", handlePresenceChanged);
+      socket.off("room-member-joined", handleRoomMemberJoined);
+      socket.off("room-member-left", handleRoomMemberLeft);
+      socket.off("room-invite-received", handleRoomInviteReceived);
+      socket.off("room-deleted", handleRoomDeleted);
     };
   }, [status, session, queryClient, setConnected]);
 

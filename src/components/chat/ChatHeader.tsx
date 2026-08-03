@@ -37,11 +37,10 @@ export default function ChatHeader({
         </h3>
 
         <span
-          className={`text-xs transition ${
-            !chat?.isGroup && isTyping
+          className={`text-xs transition ${!chat?.isGroup && isTyping
               ? "text-green-400 animate-pulse"
               : "text-gray-400"
-          }`}
+            }`}
         >
           {subtitle}
         </span>
