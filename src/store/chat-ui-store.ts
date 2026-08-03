@@ -10,20 +10,24 @@ import { create } from "zustand";
  */
 interface ChatUIState {
   activeChatId: string | null;
-  activeTab: "personal" | "group";
+  activeRoomChatId: string | null;
+  activeTab: "personal" | "group" | "room";
   sidebarCollapsed: boolean;
 
   setActiveChatId: (id: string | null) => void;
-  setActiveTab: (tab: "personal" | "group") => void;
+  setActiveRoomChatId: (id: string | null) => void;
+  setActiveTab: (tab: "personal" | "group" | "room") => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
 }
 
 export const useChatUIStore = create<ChatUIState>((set) => ({
   activeChatId: null,
+  activeRoomChatId: null,
   activeTab: "personal",
   sidebarCollapsed: true,
 
   setActiveChatId: (id) => set({ activeChatId: id }),
+  setActiveRoomChatId: (id) => set({ activeRoomChatId: id }),
   setActiveTab: (tab) => set({ activeTab: tab }),
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
 }));
