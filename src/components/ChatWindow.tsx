@@ -27,7 +27,19 @@ export default function ChatWindow() {
   );
 
   const { socket } = useSocketContext();
-  const { data: messages = [] } = useMessages(activeChatId);
+  const {
+    data: messagesData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useMessages(activeChatId);
+  const messages = useMemo(
+    () =>
+      messagesData
+        ? [...messagesData.pages].reverse().flatMap((page) => page.messages)
+        : [],
+    [messagesData]
+  );
   const { mutate: sendMessageMutation } = useSendMessage();
 
   const { mutate: markAsRead } = useMarkAsRead();
@@ -198,6 +210,9 @@ export default function ChatWindow() {
         messages={messages}
         session={session}
         isGroup={Boolean(selectedChat?.isGroup)}
+        onLoadMore={fetchNextPage}
+        hasMore={Boolean(hasNextPage)}
+        isLoadingMore={isFetchingNextPage}
       />
 
       <div className="p-4 gap-2 border-t border-white/10">

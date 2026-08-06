@@ -4,14 +4,14 @@ import React, {
   createContext,
   useContext,
   useEffect,
-  useRef,
+  useState,
 } from "react";
 import { useSession } from "next-auth/react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { Socket } from "socket.io-client";
-import { connectSocket, getSocket } from "@/lib/socket";
+import { connectSocket } from "@/lib/socket";
 import { queryKeys } from "@/lib/query-keys";
-import type { MessageDto } from "@/types/dto/message.dto";
+import type { MessageDto, MessagesPage } from "@/types/dto/message.dto";
 import type { ChatDto } from "@/types/dto/chat.dto";
 import type { RoomDto } from "@/types/dto/room.dto";
 import { useSocketStore } from "@/store/socket-store";
@@ -34,15 +34,16 @@ export default function SocketProvider({
 }) {
   const { data: session, status } = useSession();
   const queryClient = useQueryClient();
-  const socketRef = useRef<Socket | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
   const { setConnected } = useSocketStore();
+  const accessToken = (session as any)?.accessToken;
+  const sessionUserId = session?.user?.id;
 
   useEffect(() => {
-    if (status !== "authenticated" || !session) return;
+    if (status !== "authenticated" || !accessToken) return;
 
-    const token = (session as any).accessToken;
-    const socket = connectSocket(token);
-    socketRef.current = socket;
+    const socket = connectSocket(accessToken);
+    setSocket(socket);
 
     // ── Connection status ────────────────────────────────────────────────
     socket.on("connect", () => setConnected(true));
@@ -50,14 +51,19 @@ export default function SocketProvider({
 
     // ── new-message: append to React Query cache, never Zustand ─────────
     const handleNewMessage = (msg: MessageDto) => {
-      // Update messages cache for the specific chat
-      queryClient.setQueryData<MessageDto[]>(
+      // Update messages cache for the specific chat.
+      // Pages are cursor-paginated newest-first: pages[0] holds the latest
+      // batch, so live messages always append there — older pages (loaded
+      // via "load more") are left untouched.
+      queryClient.setQueryData<InfiniteData<MessagesPage>>(
         queryKeys.messages.byChat(msg.chatId),
         (prev) => {
-          if (!prev) return [msg];
+          if (!prev || !prev.pages.length) return prev;
+
+          const [firstPage, ...restPages] = prev.pages;
 
           // Deduplicate: remove any optimistic message with same content+chatId
-          const withoutOptimistic = prev.filter(
+          const withoutOptimistic = firstPage.messages.filter(
             (m) =>
               !(
                 (m as any)._isOptimistic === true &&
@@ -68,9 +74,14 @@ export default function SocketProvider({
 
           // Also deduplicate by real id in case of double-emit
           const alreadyExists = withoutOptimistic.some((m) => m.id === msg.id);
-          if (alreadyExists) return withoutOptimistic;
+          const messages = alreadyExists
+            ? withoutOptimistic
+            : [...withoutOptimistic, msg];
 
-          return [...withoutOptimistic, msg];
+          return {
+            ...prev,
+            pages: [{ ...firstPage, messages }, ...restPages],
+          };
         }
       );
 
@@ -194,7 +205,6 @@ export default function SocketProvider({
       });
 
       const { activeRoomChatId, setActiveRoomChatId } = useChatUIStore.getState();
-      const sessionUserId = (session as { user?: { id?: string } }).user?.id;
       if (activeRoomChatId === data.chatId && data.userId === sessionUserId) {
         setActiveRoomChatId(null);
       }
@@ -235,10 +245,10 @@ export default function SocketProvider({
       socket.off("room-invite-received", handleRoomInviteReceived);
       socket.off("room-deleted", handleRoomDeleted);
     };
-  }, [status, session, queryClient, setConnected]);
+  }, [status, accessToken, sessionUserId, queryClient, setConnected]);
 
   return (
-    <SocketContext.Provider value={{ socket: socketRef.current }}>
+    <SocketContext.Provider value={{ socket }}>
       {children}
     </SocketContext.Provider>
   );
