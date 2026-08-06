@@ -1,17 +1,19 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { fetchMessages } from "@/services/message.service";
 
 /**
- * useMessages — fetches messages for a given chat ID.
- * Enabled only when chatId is truthy.
+ * useMessages — fetches messages for a given chat ID, paginated newest-page-first
+ * via cursor (oldest loaded message id). Enabled only when chatId is truthy.
  */
 export function useMessages(chatId: string | null) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: queryKeys.messages.byChat(chatId!),
-    queryFn: () => fetchMessages(chatId!),
+    queryFn: ({ pageParam }) => fetchMessages(chatId!, pageParam),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     enabled: !!chatId,
   });
 }

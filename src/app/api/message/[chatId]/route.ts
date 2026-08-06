@@ -15,6 +15,8 @@ export async function GET(
         }
 
         const { chatId } = await params
+        const { searchParams } = new URL(req.url)
+        const cursor = searchParams.get('cursor')
 
         const member = await prisma.chatMember.findFirst({
             where: {
@@ -32,14 +34,18 @@ export async function GET(
                 chatId,
             },
             orderBy: {
-                createdAt: 'asc'
+                createdAt: 'desc'
             },
+            take: 50,
+            ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
             include: {
                 sender: true
             }
         })
 
-        return Response.json(messages)
+        const nextCursor = messages.length === 50 ? messages[messages.length - 1].id : null
+
+        return Response.json({ messages: messages.reverse(), nextCursor })
     } catch (error) {
         console.error(error)
         return Response.json({

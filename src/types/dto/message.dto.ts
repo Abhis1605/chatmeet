@@ -32,3 +32,9 @@ export interface SendMessagePayload {
 export interface OptimisticMessage extends MessageDto {
   _isOptimistic: true;
 }
+
+// One page of the cursor-paginated /api/message/:chatId response
+export interface MessagesPage {
+  messages: MessageDto[];
+  nextCursor: string | null;
+}

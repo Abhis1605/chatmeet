@@ -28,7 +28,19 @@ export default function RoomChatWindow() {
   );
 
   const { socket } = useSocketContext();
-  const { data: messages = [] } = useMessages(activeRoomChatId);
+  const {
+    data: messagesData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useMessages(activeRoomChatId);
+  const messages = useMemo(
+    () =>
+      messagesData
+        ? [...messagesData.pages].reverse().flatMap((page) => page.messages)
+        : [],
+    [messagesData]
+  );
   const { mutate: sendMessageMutation } = useSendMessage();
   const { mutate: markAsRead } = useMarkAsRead();
 
@@ -196,7 +208,14 @@ export default function RoomChatWindow() {
         </button>
       </div>
 
-      <MessageList messages={messages} session={session} isGroup />
+      <MessageList
+        messages={messages}
+        session={session}
+        isGroup
+        onLoadMore={fetchNextPage}
+        hasMore={Boolean(hasNextPage)}
+        isLoadingMore={isFetchingNextPage}
+      />
 
       <div className="p-4 gap-2 border-t border-white/10">
         <ChatInput

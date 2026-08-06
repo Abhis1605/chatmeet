@@ -1,9 +1,9 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { useSocketContext } from "@/providers/socket-provider";
-import type { SendMessagePayload, OptimisticMessage, MessageDto } from "@/types/dto/message.dto";
+import type { SendMessagePayload, OptimisticMessage, MessagesPage } from "@/types/dto/message.dto";
 import { useSession } from "next-auth/react";
 import { showError } from "@/lib/toast";
 
@@ -35,7 +35,7 @@ export function useSendMessage() {
         queryKey: queryKeys.messages.byChat(payload.chatId),
       });
 
-      const previousMessages = queryClient.getQueryData<MessageDto[]>(
+      const previousMessages = queryClient.getQueryData<InfiniteData<MessagesPage>>(
         queryKeys.messages.byChat(payload.chatId)
       );
 
@@ -55,10 +55,20 @@ export function useSendMessage() {
         _isOptimistic: true,
       };
 
-      // Append to cache
-      queryClient.setQueryData<MessageDto[]>(
+      // Append to the newest page of the cache
+      queryClient.setQueryData<InfiniteData<MessagesPage>>(
         queryKeys.messages.byChat(payload.chatId),
-        (prev) => (prev ? [...prev, optimisticMsg] : [optimisticMsg])
+        (prev) => {
+          if (!prev || !prev.pages.length) return prev;
+          const [firstPage, ...restPages] = prev.pages;
+          return {
+            ...prev,
+            pages: [
+              { ...firstPage, messages: [...firstPage.messages, optimisticMsg] },
+              ...restPages,
+            ],
+          };
+        }
       );
 
       return { previousMessages, chatId: payload.chatId };
