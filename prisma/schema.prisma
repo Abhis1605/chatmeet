@@ -13,49 +13,55 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(cuid())
-  name          String?
-  email         String   @unique
-  password      String?
+  id       String  @id @default(cuid())
+  name     String?
+  email    String  @unique
+  password String?
 
-  image         String?
-  provider      String
+  image    String?
+  provider String
 
-  emailVerified Boolean  @default(false)
+  emailVerified Boolean @default(false)
 
-  otp           String?
-  otpExpiry     DateTime?
+  otp       String?
+  otpExpiry DateTime?
 
-  resetToken    String?
-  resetExpiry   DateTime?
+  resetToken  String?
+  resetExpiry DateTime?
 
-  isOnline Boolean @default(false)
+  isOnline Boolean   @default(false)
   lastSeen DateTime?
 
   messages Message[]
-  chats   ChatMember[]
+  chats    ChatMember[]
 
   // ── Room invite relations (additive) ─────────────────────────────
   sentInvites     RoomInvite[] @relation("SentInvites")
   receivedInvites RoomInvite[] @relation("ReceivedInvites")
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  // ── Video call relations (additive) ──────────────────────────────
+  startedCalls CallSession[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Chat {
-  id String @id @default(cuid())
-  name String? 
+  id      String  @id @default(cuid())
+  name    String?
   isGroup Boolean @default(false)
 
   // ── Room fields (additive) ────────────────────────────────────────
-  isRoom         Boolean  @default(false)
-  roomCode       String?  @unique
-  roomCodeActive Boolean  @default(true)
+  isRoom         Boolean @default(false)
+  roomCode       String? @unique
+  roomCodeActive Boolean @default(true)
 
-  members    ChatMember[]
-  messages   Message[]
+  members     ChatMember[]
+  messages    Message[]
   roomInvites RoomInvite[]
+
+  // ── Video call relations (additive) ──────────────────────────────
+  callSessions CallSession[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -64,11 +70,11 @@ model Chat {
 model ChatMember {
   id String @id @default(cuid())
 
-  userId String
-  chatId String
-  role ChatMemberRole @default(MEMBER)
-  canSend Boolean @default(false)
-  lastReadAt DateTime @default(now())
+  userId     String
+  chatId     String
+  role       ChatMemberRole @default(MEMBER)
+  canSend    Boolean        @default(false)
+  lastReadAt DateTime       @default(now())
 
   user User @relation(fields: [userId], references: [id])
   chat Chat @relation(fields: [chatId], references: [id])
@@ -90,23 +96,38 @@ enum MessageType {
 }
 
 model Message {
-  id String @id @default(cuid())
+  id      String  @id @default(cuid())
   content String?
 
   type MessageType @default(TEXT)
 
-  fileUrl String?
+  fileUrl  String?
   fileName String?
   fileType String?
   fileSize Int?
 
   senderId String
-  chatId String
+  chatId   String
 
   sender User @relation(fields: [senderId], references: [id])
-  chat Chat @relation(fields: [chatId], references: [id])
+  chat   Chat @relation(fields: [chatId], references: [id])
 
   createdAt DateTime @default(now())
+}
+
+// ── Video Call (additive) ─────────────────────────────────────────
+model CallSession {
+  id          String    @id @default(cuid())
+  chatId      String
+  chat        Chat      @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  hmsRoomId   String
+  status      String    @default("ACTIVE")
+  startedById String
+  startedBy   User      @relation(fields: [startedById], references: [id])
+  startedAt   DateTime  @default(now())
+  endedAt     DateTime?
+
+  @@index([chatId, status])
 }
 
 // ── Room Invite ────────────────────────────────────────────────────
