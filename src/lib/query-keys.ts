@@ -22,5 +22,9 @@ export const queryKeys = {
   invites: {
     pending: ["invites", "pending"] as const,
   },
+  // ── Video call query keys (new) ───────────────────────────────────
+  calls: {
+    active: (chatId: string) => ["calls", "active", chatId] as const,
+  },
 } as const;
 
