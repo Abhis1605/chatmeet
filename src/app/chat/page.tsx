@@ -5,6 +5,8 @@ import ChatListPanel from "@/components/ChatListPanel";
 import ChatWindow from "@/components/ChatWindow";
 import RoomListPanel from "@/components/room/RoomListPanel";
 import RoomChatWindow from "@/components/room/RoomChatWindow";
+import VideoCallListPanel from "@/components/call/VideoCallListPanel";
+import VideoCallMainPanel from "@/components/call/VideoCallMainPanel";
 import { useChatUIStore } from "@/store/chat-ui-store";
 import { useSession } from "next-auth/react";
 
@@ -35,6 +37,13 @@ export default function ChatPage() {
                 Select a room to start messaging
               </div>
             )}
+          </div>
+        </>
+      ) : activeTab === "video" ? (
+        <>
+          <VideoCallListPanel />
+          <div className="flex-1">
+            <VideoCallMainPanel />
           </div>
         </>
       ) : (
