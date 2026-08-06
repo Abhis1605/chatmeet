@@ -193,8 +193,13 @@ io.on('connection', (socket: CustomSocket) => {
 
             console.log('Message created in DB, emitting...')
             io.to(chatId).emit('new-message', message)
-            // Also notify the specific user to refresh their chat list if it's a new chat for them
-            io.emit('chat-updated', { chatId, senderId: socket.user?.id })
+
+            // Notify only this chat's participants to refresh their chat list
+            const members = await prisma.chatMember.findMany({
+                where: { chatId },
+                select: { userId: true },
+            })
+            emitToUsers(members.map((m) => m.userId), 'chat-updated', { chatId, senderId: socket.user?.id })
 
         } catch (error) {
             console.error('Socket send-message error:', error)

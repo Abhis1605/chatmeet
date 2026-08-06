@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { LogIn, Plus } from "lucide-react";
 import { useChatUIStore } from "@/store/chat-ui-store";
 import { useRooms } from "@/hooks/queries/use-rooms";
@@ -14,6 +14,11 @@ export default function RoomListPanel() {
 
   const [openCreate, setOpenCreate] = useState(false);
   const [openJoin, setOpenJoin] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const formatRelativeTime = (dateStr: string) => {
     const diff = new Date().getTime() - new Date(dateStr).getTime();
@@ -98,7 +103,7 @@ export default function RoomListPanel() {
                     >
                       {room.name}
                     </p>
-                    {lastMessage?.createdAt && (
+                    {mounted && lastMessage?.createdAt && (
                       <span className="text-[10px] text-gray-500 whitespace-nowrap ml-2">
                         {formatRelativeTime(lastMessage.createdAt)}
                       </span>

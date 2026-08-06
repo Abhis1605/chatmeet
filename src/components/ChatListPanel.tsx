@@ -1,7 +1,7 @@
 "use client";
 
 import { useChatUIStore } from "@/store/chat-ui-store";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ChatSearchCommand from "./ChatSearchCommand";
 import { useSession } from "next-auth/react";
 import GroupCreateModal from "./group/GroupCreateModal";
@@ -16,6 +16,11 @@ export default function ChatListPanel({ type }: any) {
 
   const [openSearch, setOpenSearch] = useState(false);
   const [openGroupCreate, setOpenGroupCreate] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const formatPresence = (user: any) => {
     if (user?.isOnline) return "Online";
@@ -118,7 +123,7 @@ export default function ChatListPanel({ type }: any) {
                     <p className={`text-sm truncate ${hasUnread ? "text-white font-bold" : "text-gray-200 font-medium"}`}>
                       {title}
                     </p>
-                    {lastMessage?.createdAt && (
+                    {mounted && lastMessage?.createdAt && (
                       <span className="text-[10px] text-gray-500 whitespace-nowrap ml-2">
                         {formatRelativeTime(lastMessage.createdAt)}
                       </span>
