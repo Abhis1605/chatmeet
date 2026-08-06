@@ -5,7 +5,6 @@ import { SIDEBAR_TOP, SIDEBAR_BOTTOM } from "@/lib/sidebarConfig";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import { useChatUIStore } from "@/store/chat-ui-store";
-import SidebarCallPanel from "@/components/call/SidebarCallPanel";
 
 export default function Sidebar() {
   const { activeTab, setActiveTab, sidebarCollapsed: collapsed, setSidebarCollapsed: setCollapsed } = useChatUIStore();
@@ -46,7 +45,12 @@ export default function Sidebar() {
               <div key={item.id} className="relative group">
                 <button
                   onClick={() => {
-                    if (item.id === "personal" || item.id === "group" || item.id === "room") {
+                    if (
+                      item.id === "personal" ||
+                      item.id === "group" ||
+                      item.id === "room" ||
+                      item.id === "video"
+                    ) {
                       setActiveTab(item.id);
                     }
                   }}
@@ -81,11 +85,6 @@ export default function Sidebar() {
 
       {/* BOTTOM */}
       <div className="mt-auto">
-        {/* VIDEO CALL ENTRY POINT */}
-        <div className="px-2 pt-2">
-          <SidebarCallPanel />
-        </div>
-
         <div className="px-2 pb-2 space-y-1 border-t border-white/10 pt-4">
           {SIDEBAR_BOTTOM.map((item) => {
             const Icon = item.icon;
