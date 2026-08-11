@@ -75,7 +75,10 @@ export default function ChatWindow() {
     if (activeChatId) {
       markAsRead(activeChatId);
     }
-  }, [activeChatId, markAsRead]);
+    // Re-mark-as-read whenever new messages arrive while this chat stays
+    // open, otherwise lastReadAt goes stale and unreadCount creeps back up
+    // on the next chat-list refetch.
+  }, [activeChatId, messages.length, markAsRead]);
 
   useEffect(() => {
     return () => {

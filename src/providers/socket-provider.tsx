@@ -89,7 +89,9 @@ export default function SocketProvider({
       const currentActiveChatId = useChatUIStore.getState().activeChatId;
       const currentActiveRoomChatId = useChatUIStore.getState().activeRoomChatId;
       const isUnread =
-        currentActiveChatId !== msg.chatId && currentActiveRoomChatId !== msg.chatId;
+        currentActiveChatId !== msg.chatId &&
+        currentActiveRoomChatId !== msg.chatId &&
+        msg.senderId !== sessionUserId;
 
       // Update last message preview in chat list caches
       for (const type of ["personal", "group"] as const) {

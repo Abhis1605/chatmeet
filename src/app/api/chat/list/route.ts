@@ -58,6 +58,7 @@ export async function GET(req: Request) {
           JOIN "ChatMember" cm ON cm."chatId" = m."chatId" AND cm."userId" = ${session.user.id}
           WHERE m."chatId" IN (${Prisma.join(chatIds)})
             AND m."createdAt" > cm."lastReadAt"
+            AND m."senderId" != ${session.user.id}
           GROUP BY m."chatId"
         `
       : [];
