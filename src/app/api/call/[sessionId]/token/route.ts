@@ -42,7 +42,7 @@ export async function POST(
             hmsRoomId: callSession.hmsRoomId,
             userId: session.user.id,
             userName,
-            role: 'host',
+            role: 'guest',
         })
 
         return Response.json({
