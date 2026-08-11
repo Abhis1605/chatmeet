@@ -69,7 +69,10 @@ export default function RoomChatWindow() {
     if (activeRoomChatId) {
       markAsRead(activeRoomChatId);
     }
-  }, [activeRoomChatId, markAsRead]);
+    // Re-mark-as-read whenever new messages arrive while this room stays
+    // open, otherwise lastReadAt goes stale and unreadCount creeps back up
+    // on the next chat-list refetch.
+  }, [activeRoomChatId, messages.length, markAsRead]);
 
   useEffect(() => {
     return () => {
