@@ -6,6 +6,7 @@ import type {
   VerifyOtpResponse,
   ResendOtpRequest,
   ResendOtpResponse,
+  LogoutResponse,
 } from "@/types/dto/auth.dto";
 
 /**
@@ -42,5 +43,10 @@ export async function resendOtp(
     "/auth/resend-otp",
     { email } satisfies ResendOtpRequest
   );
+  return data;
+}
+
+export async function logoutUser(): Promise<LogoutResponse> {
+  const { data } = await apiClient.post<LogoutResponse>("/auth/logout");
   return data;
 }
