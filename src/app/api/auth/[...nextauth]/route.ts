@@ -90,7 +90,10 @@ export const authOptions: NextAuthOptions = {
                     where: { email: user.email! },
                     data: {
                         name: user.name,
-                        image: user.image
+                        image: user.image,
+                        ...(account?.provider !== "credentials"
+                            ? { emailVerified: true }
+                            : {}),
                     }
                 })
             }

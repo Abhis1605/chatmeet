@@ -19,21 +19,28 @@ export default function LoginPage() {
   const router = useRouter()
 
   const handleLogin = async () => {
+    const trimmedEmail = email.trim();
     setLoadingProvider('credentials')
-    const res = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    try {
+      const res = await signIn("credentials", {
+        email: trimmedEmail,
+        password,
+        redirect: false,
+      });
 
-    if(res?.error){
-      showError(res.error)
-    }else {
-      showSuccess('Logged in successfully')
-      router.push('/chat')
+      if(res?.error){
+        showError(res.error)
+
+        if (res.error === "Verify email first" && trimmedEmail) {
+          router.push(`/verify?email=${encodeURIComponent(trimmedEmail)}`);
+        }
+      }else {
+        showSuccess('Logged in successfully')
+        router.push('/chat')
+      }
+    } finally {
+      setLoadingProvider(null)
     }
-
-    setLoadingProvider(null)
   };
 
   const handleOAuth = async (provider: "google" | "github") => {

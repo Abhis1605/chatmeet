@@ -32,3 +32,9 @@ export interface ResendOtpResponse {
   success?: boolean;
   error?: string;
 }
+
+// /api/auth/logout response
+export interface LogoutResponse {
+  success?: boolean;
+  error?: string;
+}
