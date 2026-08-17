@@ -1,9 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useChatUIStore } from "@/store/chat-ui-store";
 import { useChats } from "@/hooks/queries/use-chats";
+import { useCallHistory } from "@/hooks/queries/use-call-history";
+
+const formatDuration = (seconds: number | null) => {
+  if (seconds === null) return "In progress";
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  if (minutes < 1) return `${remainingSeconds}s`;
+  return `${minutes}m ${remainingSeconds.toString().padStart(2, "0")}s`;
+};
+
+const formatStartedAt = (date: string) =>
+  new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(date));
 
 /**
  * VideoCallListPanel — lets the user pick who to video-call, mirroring the
@@ -13,9 +30,23 @@ import { useChats } from "@/hooks/queries/use-chats";
 export default function VideoCallListPanel() {
   const { data: session } = useSession();
   const { setActiveChatId, activeChatId } = useChatUIStore();
-  const [subTab, setSubTab] = useState<"personal" | "group">("personal");
+  const [subTab, setSubTab] = useState<"personal" | "history">("personal");
+  const [expandedCallId, setExpandedCallId] = useState<string | null>(null);
 
-  const { data: chats, isLoading } = useChats(subTab);
+  const { data: chats, isLoading } = useChats("personal");
+
+  const {
+    data: historyData,
+    isLoading: isLoadingHistory,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useCallHistory();
+
+  const historyCalls = useMemo(
+    () => historyData?.pages.flatMap((page) => page.calls) ?? [],
+    [historyData]
+  );
 
   return (
     <div className="w-[320px] border-r border-white/10 flex flex-col">
@@ -37,66 +68,159 @@ export default function VideoCallListPanel() {
           </button>
           <button
             type="button"
-            onClick={() => setSubTab("group")}
+            onClick={() => setSubTab("history")}
             className={`flex-1 py-1.5 text-sm rounded-md transition ${
-              subTab === "group"
+              subTab === "history"
                 ? "bg-white/10 text-white"
                 : "text-gray-400 hover:text-white"
             }`}
           >
-            Group
+            History
           </button>
         </div>
       </div>
 
       {/* LIST */}
       <div className="flex-1 overflow-y-auto">
-        {isLoading && <div className="p-4 text-center text-gray-500 text-sm">Loading...</div>}
+        {subTab === "personal" ? (
+          <>
+            {isLoading && <div className="p-4 text-center text-gray-500 text-sm">Loading...</div>}
 
-        {Array.isArray(chats) && chats.length === 0 && !isLoading && (
-          <div className="p-4 text-center text-gray-500 text-sm">
-            {subTab === "personal" ? "No personal chats yet" : "No groups yet"}
-          </div>
-        )}
-
-        {Array.isArray(chats) &&
-          chats.map((chat) => {
-            const otherUser = chat.members?.find(
-              (m) => m.user.id !== session?.user?.id
-            )?.user;
-
-            const title = chat.isGroup ? chat.name : otherUser?.name || otherUser?.email;
-            const subtitle = chat.isGroup
-              ? `${chat.members?.length ?? 0} members`
-              : otherUser?.isOnline
-                ? "Online"
-                : "Offline";
-
-            return (
-              <div
-                key={chat.id}
-                onClick={() => setActiveChatId(chat.id)}
-                className={`p-3 flex items-center gap-3 cursor-pointer transition ${
-                  activeChatId === chat.id ? "bg-white/10" : "hover:bg-white/5"
-                }`}
-              >
-                <img
-                  alt="avatar-img"
-                  src={
-                    chat.isGroup
-                      ? "/chatmeet-collapsed-logo.png"
-                      : otherUser?.image || "/default-avatar.png"
-                  }
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-200 font-medium truncate">{title}</p>
-                  <p className="text-xs text-gray-500 truncate">{subtitle}</p>
-                </div>
+            {Array.isArray(chats) && chats.length === 0 && !isLoading && (
+              <div className="p-4 text-center text-gray-500 text-sm">
+                No personal chats yet
               </div>
-            );
-          })}
+            )}
+
+            {Array.isArray(chats) &&
+              chats.map((chat) => {
+                const otherUser = chat.members?.find(
+                  (m) => m.user.id !== session?.user?.id
+                )?.user;
+
+                const title = chat.isGroup ? chat.name : otherUser?.name || otherUser?.email;
+                const subtitle = chat.isGroup
+                  ? `${chat.members?.length ?? 0} members`
+                  : otherUser?.isOnline
+                    ? "Online"
+                    : "Offline";
+
+                return (
+                  <div
+                    key={chat.id}
+                    onClick={() => setActiveChatId(chat.id)}
+                    className={`p-3 flex items-center gap-3 cursor-pointer transition ${
+                      activeChatId === chat.id ? "bg-white/10" : "hover:bg-white/5"
+                    }`}
+                  >
+                    <img
+                      alt="avatar-img"
+                      src={
+                        chat.isGroup
+                          ? "/chatmeet-collapsed-logo.png"
+                          : otherUser?.image || "/default-avatar.png"
+                      }
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-200 font-medium truncate">{title}</p>
+                      <p className="text-xs text-gray-500 truncate">{subtitle}</p>
+                    </div>
+                  </div>
+                );
+              })}
+          </>
+        ) : (
+          <>
+            {isLoadingHistory && (
+              <div className="p-4 text-center text-gray-500 text-sm">Loading...</div>
+            )}
+
+            {!isLoadingHistory && historyCalls.length === 0 && (
+              <div className="p-4 text-center text-gray-500 text-sm">
+                No call history yet
+              </div>
+            )}
+
+            {historyCalls.map((call) => {
+              const isExpanded = expandedCallId === call.id;
+              const badgeClass =
+                call.outcome === "Completed"
+                  ? "bg-emerald-500/10 text-emerald-300"
+                  : call.outcome === "Active"
+                    ? "bg-blue-500/10 text-blue-300"
+                    : call.outcome === "Declined"
+                      ? "bg-yellow-500/10 text-yellow-300"
+                      : "bg-red-500/10 text-red-300";
+
+              return (
+                <div key={call.id} className="border-b border-white/5">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedCallId(isExpanded ? null : call.id)}
+                    className="w-full p-3 text-left hover:bg-white/5 transition"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm text-gray-200 font-medium truncate">
+                          {call.displayName}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">
+                          {call.type === "GROUP" ? "Group" : "Personal"} ·{" "}
+                          {formatDuration(call.durationSeconds)}
+                        </p>
+                      </div>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full ${badgeClass}`}>
+                        {call.outcome}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-[11px] text-gray-500">
+                      {formatStartedAt(call.startedAt)}
+                    </p>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="px-3 pb-3 space-y-2">
+                      {call.participants.map((participant) => (
+                        <div
+                          key={participant.id}
+                          className="flex items-center justify-between gap-2 text-xs"
+                        >
+                          <div className="min-w-0 flex items-center gap-2">
+                            <img
+                              src={participant.image || "/default-avatar.png"}
+                              alt="participant"
+                              className="w-6 h-6 rounded-full object-cover"
+                            />
+                            <span className="text-gray-300 truncate">
+                              {participant.name || participant.email}
+                              {participant.isStarter ? " (host)" : ""}
+                            </span>
+                          </div>
+                          <span className="text-gray-500 shrink-0">
+                            {participant.status.toLowerCase()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {hasNextPage && (
+              <button
+                type="button"
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                className="m-3 w-[calc(100%-1.5rem)] rounded-md bg-white/10 py-2 text-sm text-gray-200 hover:bg-white/15 disabled:opacity-50"
+              >
+                {isFetchingNextPage ? "Loading..." : "Load more"}
+              </button>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

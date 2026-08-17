@@ -25,6 +25,7 @@ export const queryKeys = {
   // ── Video call query keys (new) ───────────────────────────────────
   calls: {
     active: (chatId: string) => ["calls", "active", chatId] as const,
+    history: ["calls", "history"] as const,
   },
 } as const;
 

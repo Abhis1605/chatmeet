@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth"
 import { authOptions } from "../../../auth/[...nextauth]/route"
 import { endHmsRoom } from "@/lib/hms"
+import { notifySocket } from "@/lib/socket-notify"
 
 export async function POST(
     req: Request,
@@ -18,6 +19,7 @@ export async function POST(
 
         const callSession = await prisma.callSession.findUnique({
             where: { id: sessionId },
+            include: { participants: true },
         })
 
         if (!callSession) {
@@ -39,16 +41,52 @@ export async function POST(
             return Response.json({ error: 'Failed to end call' }, { status: 502 })
         }
 
-        const updated = await prisma.callSession.update({
-            where: { id: sessionId },
-            data: { status: 'ENDED', endedAt: new Date() },
+        // Determine final session status:
+        // MISSED  → no one except the starter ever JOINED
+        // ENDED   → at least one other participant joined at some point
+        const othersJoined = callSession.participants.some(
+            (p) => p.userId !== session.user.id && p.joinedAt !== null
+        )
+        const finalStatus = othersJoined ? 'ENDED' : 'MISSED'
+        const now = new Date()
+
+        const updated = await prisma.$transaction(async (tx) => {
+            // Mark still-JOINED participants as LEFT
+            await tx.callParticipant.updateMany({
+                where: { callSessionId: sessionId, status: 'JOINED' },
+                data: { status: 'LEFT', leftAt: now },
+            })
+
+            // Mark still-INVITED participants as MISSED
+            await tx.callParticipant.updateMany({
+                where: { callSessionId: sessionId, status: 'INVITED' },
+                data: { status: 'MISSED' },
+            })
+
+            return tx.callSession.update({
+                where: { id: sessionId },
+                data: { status: finalStatus, endedAt: now },
+            })
         })
+
+        // Notify all participants that the call has ended
+        const participantIds = callSession.participants.map((p) => p.userId)
+        await notifySocket(
+            'call-ended',
+            {
+                sessionId,
+                chatId: updated.chatId,
+                status: updated.status,
+            },
+            { userIds: participantIds, chatId: updated.chatId }
+        )
 
         return Response.json({
             callSession: {
                 id: updated.id,
                 chatId: updated.chatId,
                 hmsRoomId: updated.hmsRoomId,
+                type: updated.type,
                 status: updated.status,
                 startedById: updated.startedById,
                 startedAt: updated.startedAt.toISOString(),
@@ -60,3 +98,4 @@ export async function POST(
         return Response.json({ error: 'Server error' }, { status: 500 })
     }
 }
+

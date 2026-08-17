@@ -16,6 +16,7 @@ import type { ChatDto } from "@/types/dto/chat.dto";
 import type { RoomDto } from "@/types/dto/room.dto";
 import { useSocketStore } from "@/store/socket-store";
 import { useChatUIStore } from "@/store/chat-ui-store";
+import { toast } from "sonner";
 
 interface SocketContextValue {
   socket: Socket | null;
@@ -228,6 +229,37 @@ export default function SocketProvider({
       }
     };
 
+    // ── Call events ─────────────────────────────────────────────────────
+    const handleCallIncoming = (data: {
+      sessionId: string;
+      chatId: string;
+      type: string;
+      startedByName: string;
+    }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.calls.active(data.chatId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.calls.history });
+
+      const callType = data.type === "GROUP" ? "Group call" : "Video call";
+      toast(`${callType} started by ${data.startedByName}`, {
+        description: "Switch to the Video Call tab to join.",
+        action: {
+          label: "Join",
+          onClick: () => {
+            // Ideally navigate to video call tab and select this chat.
+            // For now, just set active chat.
+            useChatUIStore.getState().setActiveChatId(data.chatId);
+            useChatUIStore.getState().setActiveTab("chats"); // Or whichever tab makes sense
+          },
+        },
+        duration: 10000,
+      });
+    };
+
+    const handleCallEnded = (data: { chatId: string }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.calls.active(data.chatId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.calls.history });
+    };
+
     socket.on("new-message", handleNewMessage);
     socket.on("chat-updated", handleChatUpdated);
     socket.on("user-presence-changed", handlePresenceChanged);
@@ -235,6 +267,8 @@ export default function SocketProvider({
     socket.on("room-member-left", handleRoomMemberLeft);
     socket.on("room-invite-received", handleRoomInviteReceived);
     socket.on("room-deleted", handleRoomDeleted);
+    socket.on("call-incoming", handleCallIncoming);
+    socket.on("call-ended", handleCallEnded);
 
     return () => {
       socket.off("connect");
@@ -246,6 +280,8 @@ export default function SocketProvider({
       socket.off("room-member-left", handleRoomMemberLeft);
       socket.off("room-invite-received", handleRoomInviteReceived);
       socket.off("room-deleted", handleRoomDeleted);
+      socket.off("call-incoming", handleCallIncoming);
+      socket.off("call-ended", handleCallEnded);
     };
   }, [status, accessToken, sessionUserId, queryClient, setConnected]);
 
