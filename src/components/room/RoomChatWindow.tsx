@@ -160,7 +160,7 @@ export default function RoomChatWindow() {
 
   if (!selectedRoom) {
     return (
-      <div className="h-full flex items-center justify-center text-gray-400">
+      <div className="h-full flex items-center justify-center text-muted">
         Select a room
       </div>
     );
@@ -172,7 +172,7 @@ export default function RoomChatWindow() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="h-18 px-5 border-b border-white/10 flex items-center gap-3 bg-[#0f172a]">
+      <div className="h-18 px-5 border-b border-border flex items-center gap-3 bg-surface-soft">
         <img
           src="/chatmeet-collapsed-logo.png"
           alt="room"
@@ -180,10 +180,10 @@ export default function RoomChatWindow() {
         />
 
         <div className="flex flex-col flex-1 min-w-0">
-          <h3 className="text-white font-semibold truncate">{selectedRoom.name}</h3>
+          <h3 className="text-foreground font-semibold truncate">{selectedRoom.name}</h3>
           <span
             className={`text-xs transition ${
-              isTyping ? "text-green-400 animate-pulse" : "text-gray-400"
+              isTyping ? "text-primary animate-pulse" : "text-muted"
             }`}
           >
             {subtitle}
@@ -195,7 +195,7 @@ export default function RoomChatWindow() {
           title="Share room code"
           aria-label="Share room code"
           onClick={() => setOpenShareCode(true)}
-          className="p-2 rounded-md text-gray-400 hover:bg-white/10 hover:text-white transition"
+          className="p-2 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition"
         >
           <Hash className="w-5 h-5" />
         </button>
@@ -205,7 +205,7 @@ export default function RoomChatWindow() {
           title="Room members"
           aria-label="Room members"
           onClick={() => setOpenMembers(true)}
-          className="p-2 rounded-md text-gray-400 hover:bg-white/10 hover:text-white transition"
+          className="p-2 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition"
         >
           <Users className="w-5 h-5" />
         </button>
@@ -220,7 +220,7 @@ export default function RoomChatWindow() {
         isLoadingMore={isFetchingNextPage}
       />
 
-      <div className="p-4 gap-2 border-t border-white/10">
+      <div className="p-4 gap-2 border-t border-border">
         <ChatInput
           input={input}
           onChange={handleTyping}

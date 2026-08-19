@@ -19,7 +19,7 @@ export default function AttachmentMenu({
   if (!open) return null;
 
   return (
-    <div className="absolute bottom-20 left-14 z-50 w-60 rounded-2xl border border-white/10 bg-[#111827] p-2 shadow-2xl">
+    <div className="absolute bottom-20 left-14 z-50 w-60 rounded-2xl border border-border bg-surface p-2 shadow-2xl">
 
       <button
         type="button"
@@ -27,11 +27,11 @@ export default function AttachmentMenu({
           imageInputRef.current?.click();
           onClose();
         }}
-        className="flex w-full items-center gap-3 rounded-xl p-3 transition hover:bg-white/5"
+        className="flex w-full items-center gap-3 rounded-xl p-3 transition hover:bg-surface-soft"
       >
         <ImageIcon className="h-5 w-5 text-green-400" />
 
-        <span className="text-white">
+        <span className="text-foreground">
           Photos & Videos
         </span>
       </button>
@@ -46,7 +46,7 @@ export default function AttachmentMenu({
       >
         <File className="h-5 w-5 text-blue-400" />
 
-        <span className="text-white">
+        <span className="text-foreground">
           Documents
         </span>
       </button>

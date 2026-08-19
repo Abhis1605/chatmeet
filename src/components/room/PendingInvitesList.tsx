@@ -8,7 +8,7 @@ export default function PendingInvitesList() {
   const { mutate: respond, isPending } = useRespondInvite();
 
   if (isLoading) {
-    return <div className="p-3 text-xs text-gray-500">Loading invites...</div>;
+    return <div className="p-3 text-xs text-muted">Loading invites...</div>;
   }
 
   if (invites.length === 0) {
@@ -17,7 +17,7 @@ export default function PendingInvitesList() {
 
   return (
     <div className="border-b border-white/10">
-      <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+      <div className="px-3 py-2 text-xs font-semibold text-muted uppercase tracking-wide">
         Pending Invites
       </div>
       {invites.map((invite) => (
@@ -31,8 +31,8 @@ export default function PendingInvitesList() {
             className="w-9 h-9 rounded-full object-cover"
           />
           <div className="flex-1 min-w-0">
-            <p className="text-sm text-white truncate">{invite.chat.name}</p>
-            <p className="text-xs text-gray-400 truncate">
+            <p className="text-sm text-foreground truncate">{invite.chat.name}</p>
+            <p className="text-xs text-muted truncate">
               From {invite.invitedBy.name || invite.invitedBy.email}
             </p>
           </div>
@@ -47,7 +47,7 @@ export default function PendingInvitesList() {
                   chatId: invite.chatId,
                 })
               }
-              className="px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-60"
+              className="px-2 py-1 text-xs rounded bg-primary text-on-primary hover:bg-primary-hover disabled:opacity-60"
             >
               Accept
             </button>
@@ -57,7 +57,7 @@ export default function PendingInvitesList() {
               onClick={() =>
                 respond({ inviteId: invite.id, action: "reject", chatId: invite.chatId })
               }
-              className="px-2 py-1 text-xs rounded bg-white/10 text-gray-300 hover:bg-white/20 disabled:opacity-60"
+              className="px-2 py-1 text-xs rounded bg-surface-soft text-muted hover:bg-border disabled:opacity-60"
             >
               Decline
             </button>

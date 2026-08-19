@@ -44,15 +44,15 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
 
   return (
     <div className="fixed inset-0 z-100 bg-black/60 backdrop-blur-sm flex items-start justify-center pt-20">
-      <div className="w-125 bg-[#111827] rounded-xl shadow-2xl border border-white/10 overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-          <p className="text-white text-sm font-semibold">Join Room</p>
+      <div className="w-125 bg-surface rounded-xl shadow-2xl border border-border overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <p className="text-foreground text-sm font-semibold">Join Room</p>
           <button
             type="button"
             title="Close"
             aria-label="Close"
             onClick={onClose}
-            className="p-1 rounded-md text-gray-400 hover:bg-white/10 hover:text-white transition"
+            className="p-1 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition"
           >
             <X className="w-4 h-4" />
           </button>
@@ -63,7 +63,7 @@ export default function JoinRoomModal({ open, onClose }: JoinRoomModalProps) {
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase().slice(0, 6))}
             placeholder="Enter 6-character code"
-            className="w-full rounded-lg bg-white/5 px-4 py-3 text-white tracking-widest text-center text-lg outline-none border border-white/10 focus:border-blue-500 uppercase"
+            className="w-full rounded-lg bg-surface-soft px-4 py-3 text-foreground tracking-widest text-center text-lg outline-none border border-border focus:border-primary uppercase"
           />
 
           <button

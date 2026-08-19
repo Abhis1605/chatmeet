@@ -51,15 +51,16 @@ export default function LoginPage() {
 
   return (
 
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-[#0b1220] to-[#111827]">
+    <div className="min-h-screen flex items-center justify-center bg-background">
 
       <AuthCard>
 
         {/* Logo */}
-        <div className="text-center mb-6">
-          <img src="/chatmeet-logo.png" className="mx-auto h-25 mb-1" alt="logo-png" />
-          <h1 className="text-2xl font-bold text-white">ChatMeet</h1>
-          <p className="text-sm text-(--color-text-muted)">
+        <div className="text-center mb-3">
+          <div className="inline-block">
+            <img src="/chatmeet-logo.png" className="h-30 w-60 object-contain" alt="ChatMeet logo" />
+          </div>
+          <p className="text-sm text-muted">
             Sign in to connect and start chatting
           </p>
         </div>
@@ -99,7 +100,7 @@ export default function LoginPage() {
         </button>
 
         {/* Divider */}
-        <div className="my-6 text-center text-sm text-gray-500">
+        <div className="my-6 text-center text-sm text-muted">
           OR CONTINUE WITH
         </div>
 
@@ -108,7 +109,7 @@ export default function LoginPage() {
           <button
             onClick={() => handleOAuth('google')}
             disabled={loadingProvider !== null }
-            className="flex items-center justify-center flex-1 gap-2 py-3 rounded-lg border border-gray-600 text-white hover:bg-gray-800"
+            className="flex items-center justify-center flex-1 gap-2 py-3 rounded-lg border border-border text-foreground hover:bg-surface-soft"
           >
             {loadingProvider === "google" ? (
               <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
@@ -127,7 +128,7 @@ export default function LoginPage() {
 
           <button
             onClick={() => handleOAuth('github')}
-            className="flex items-center justify-center gap-2 flex-1 py-3 rounded-lg border border-gray-600 text-white hover:bg-gray-800"
+            className="flex items-center justify-center gap-2 flex-1 py-3 rounded-lg border border-border text-foreground hover:bg-surface-soft"
           >
              {loadingProvider === "github" ? (
               <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
@@ -146,9 +147,9 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-sm text-gray-400 mt-6">
+        <p className="text-center text-sm text-muted mt-6">
           Don’t have an account?{" "}
-          <Link href="/register" className="text-blue-400">
+          <Link href="/register" className="text-primary">
             Create Account
           </Link>
         </p>

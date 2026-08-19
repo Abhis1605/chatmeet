@@ -77,15 +77,15 @@ export default function GroupCreateModal({ open, onClose }: GroupCreateModalProp
 
   return (
     <div className="fixed inset-0 z-100 bg-black/60 backdrop-blur-sm flex items-start justify-center pt-20">
-      <div className="w-125 bg-[#111827] rounded-xl shadow-2xl border border-white/10 overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-          <p className="text-white text-sm font-semibold">Create Group</p>
+      <div className="w-125 bg-surface rounded-xl shadow-2xl border border-border overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <p className="text-foreground text-sm font-semibold">Create Group</p>
           <button
             type="button"
             title="Close"
             aria-label="Close"
             onClick={onClose}
-            className="p-1 rounded-md text-gray-400 hover:bg-white/10 hover:text-white transition"
+            className="p-1 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition"
           >
             <X className="w-4 h-4" />
           </button>
@@ -96,7 +96,7 @@ export default function GroupCreateModal({ open, onClose }: GroupCreateModalProp
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Group name"
-            className="w-full rounded-lg bg-white/5 px-4 py-3 text-white outline-none border border-white/10 focus:border-blue-500"
+            className="w-full rounded-lg bg-surface-soft px-4 py-3 text-foreground outline-none border border-border focus:border-primary"
           />
 
           {selectedUsers.length > 0 && (
@@ -106,7 +106,7 @@ export default function GroupCreateModal({ open, onClose }: GroupCreateModalProp
                   key={user.id}
                   type="button"
                   onClick={() => toggleUser(user)}
-                  className="flex items-center gap-2 rounded-full bg-blue-600/20 border border-blue-500/30 px-3 py-1.5 text-xs text-blue-100"
+                  className="flex items-center gap-2 rounded-full bg-primary-soft border border-primary/30 px-3 py-1.5 text-xs text-primary"
                 >
                   {user.name || user.email}
                   <X className="w-3 h-3" />
@@ -115,16 +115,16 @@ export default function GroupCreateModal({ open, onClose }: GroupCreateModalProp
             </div>
           )}
 
-          <Command shouldFilter={false} className="rounded-lg border border-white/10 overflow-hidden bg-[#0f172a]">
+          <Command shouldFilter={false} className="rounded-lg border border-border overflow-hidden bg-surface-soft">
             <CommandInput
               placeholder="Search members by email..."
               value={search}
               onValueChange={setSearch}
-              className="px-4 py-3 text-white bg-transparent outline-none border-b border-white/10"
+              className="px-4 py-3 text-foreground bg-transparent outline-none border-b border-border"
             />
             <CommandList className="max-h-58 overflow-y-auto">
               {results.length === 0 && search && (
-                <CommandEmpty className="p-4 text-gray-400 text-sm">
+                <CommandEmpty className="p-4 text-muted text-sm">
                   No user found
                 </CommandEmpty>
               )}
@@ -137,7 +137,7 @@ export default function GroupCreateModal({ open, onClose }: GroupCreateModalProp
                     key={user.id}
                     value={`${user.name} ${user.email}`}
                     onSelect={() => toggleUser(user)}
-                    className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/10 transition"
+                    className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-surface-soft transition"
                   >
                     <img
                       src={user.image || "/default-avatar.png"}
@@ -145,15 +145,15 @@ export default function GroupCreateModal({ open, onClose }: GroupCreateModalProp
                       className="w-9 h-9 rounded-full object-cover"
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-white text-sm font-medium truncate">
+                      <p className="text-foreground text-sm font-medium truncate">
                         {user.name || "No Name"}
                       </p>
-                      <p className="text-gray-400 text-xs truncate">{user.email}</p>
+                      <p className="text-muted text-xs truncate">{user.email}</p>
                     </div>
                     {selected ? (
-                      <Check className="w-4 h-4 text-green-400" />
+                      <Check className="w-4 h-4 text-primary" />
                     ) : (
-                      <Plus className="w-4 h-4 text-gray-400" />
+                      <Plus className="w-4 h-4 text-muted" />
                     )}
                   </CommandItem>
                 );

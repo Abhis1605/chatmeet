@@ -1,56 +1,102 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --color-primary: #1e3a8a;
-  --color-primary-light: #2563eb;
-  --color-primary-glow: #60a5fa;
+  --background: #f7f6f2;
+  --surface: #ffffff;
+  --surface-soft: #eeeee9;
+  --foreground: #20221f;
+  --muted: #6c706a;
+  --border: #e3e1da;
 
-  --color-surface: #111827;
-  --color-surface-soft: #1f2937;
+  --primary: #315c4c;
+  --primary-hover: #284a3d;
+  --primary-soft: #e4ede8;
+  --on-primary: #ffffff;
 
-  --color-text: #e5e7eb;
-  --color-text-muted: #9ca3af;
+  --error: #ba1a1a;
+  --error-soft: #ffdad6;
 
-  --color-border: #374151;
+  --radius: 0.5rem;
 
-  --shadow-glow: 0 0 20px rgba(37, 99, 235, 0.4);
+  --font-heading: var(--font-dm-sans), "DM Sans", sans-serif;
+  --font-body: var(--font-inter), "Inter", sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", monospace;
 }
 
-@theme inline {
+.dark {
+  --background: #171916;
+  --surface: #1e211e;
+  --surface-soft: #263a31;
+  --foreground: #e9ebe5;
+  --muted: #a6aaa2;
+  --border: #30352f;
+
+  --primary: #7faf9b;
+  --primary-hover: #91bfad;
+  --primary-soft: #263a31;
+  --on-primary: #12211b;
+
+  --error: #ffb4ab;
+  --error-soft: #4c0000;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0b1220;
-    --foreground: #ededed;
+  :root:not(.light) {
+    --background: #171916;
+    --surface: #1e211e;
+    --surface-soft: #263a31;
+    --foreground: #e9ebe5;
+    --muted: #a6aaa2;
+    --border: #30352f;
+
+    --primary: #7faf9b;
+    --primary-hover: #91bfad;
+    --primary-soft: #263a31;
+    --on-primary: #12211b;
+
+    --error: #ffb4ab;
+    --error-soft: #4c0000;
   }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-soft: var(--surface-soft);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-on-primary: var(--on-primary);
+  --color-error: var(--error);
+  --color-error-soft: var(--error-soft);
+
+  --radius-sm: 0.25rem;
+  --radius-DEFAULT: 0.5rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  --font-heading: var(--font-heading);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body);
 }
 
-.btn-primary {
-  background: linear-gradient(
-    135deg,
-    var(--color-primary),
-    var(--color-primary-light)
-  );
-  color: white;
-  padding: 12px 24px;
-  border-radius: 10px;
-  box-shadow: var(--shadow-glow);
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  letter-spacing: -0.01em;
 }
 
-.card {
-  background: var(--color-surface);
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: var(--shadow-glow);
+.font-mono, code, kbd {
+  font-family: var(--font-mono);
 }
 
 .chat-scroll::-webkit-scrollbar {
@@ -62,16 +108,26 @@ body {
 }
 
 .chat-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,.10);
+  background: var(--border);
   border-radius: 999px;
 }
 
 .chat-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgba(255,255,255,.22);
+  background: var(--muted);
 }
 
 /* Firefox */
 .chat-scroll {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255,255,255,.15) transparent;
+  scrollbar-color: var(--border) transparent;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--foreground);
+  caret-color: var(--foreground);
+  box-shadow: 0 0 0px 1000px var(--surface-soft) inset;
+  transition: background-color 9999s ease-in-out 0s;
 }

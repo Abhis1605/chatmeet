@@ -16,14 +16,14 @@ export default function ChatPage() {
 
   if (status === "loading") {
     return (
-      <div className="h-screen flex items-center justify-center text-white">
+      <div className="h-screen flex items-center justify-center text-foreground">
         Loading...
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-[#0b1220] text-white">
+    <div className="flex h-screen bg-background text-foreground">
       <Sidebar />
 
       {activeTab === "room" ? (
@@ -33,7 +33,7 @@ export default function ChatPage() {
             {activeRoomChatId ? (
               <RoomChatWindow />
             ) : (
-              <div className="h-full flex items-center justify-center text-gray-400">
+              <div className="h-full flex items-center justify-center text-muted">
                 Select a room to start messaging
               </div>
             )}
@@ -53,7 +53,7 @@ export default function ChatPage() {
             {activeChatId ? (
               <ChatWindow />
             ) : (
-              <div className="h-full flex items-center justify-center text-gray-400">
+              <div className="h-full flex items-center justify-center text-muted">
                 Select a chat to start messaging
               </div>
             )}

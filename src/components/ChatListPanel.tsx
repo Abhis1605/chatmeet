@@ -47,10 +47,10 @@ export default function ChatListPanel({ type }: any) {
   };
 
   return (
-    <div className="w-[320px] border-r border-white/10 flex flex-col">
+    <div className="w-[320px] border-r border-border flex flex-col">
       {/* HEADER */}
-      <div className="p-3 border-b border-white/10 flex justify-between items-center">
-        <h2 className="text-white font-semibold capitalize">{type} chats</h2>
+      <div className="p-3 border-b border-border flex justify-between items-center">
+        <h2 className="text-foreground font-semibold capitalize">{type} chats</h2>
 
         {type === "group" ? (
           <button
@@ -78,7 +78,7 @@ export default function ChatListPanel({ type }: any) {
 
       {/* CHAT LIST */}
       <div className="flex-1 overflow-y-auto">
-        {isLoading && <div className="p-4 text-center text-gray-500 text-sm">Loading...</div>}
+        {isLoading && <div className="p-4 text-center text-muted text-sm">Loading...</div>}
         {Array.isArray(chats) &&
           [...chats].sort((a, b) => {
             const dateA = a.lastMessage?.createdAt || a.updatedAt;
@@ -103,7 +103,7 @@ export default function ChatListPanel({ type }: any) {
               <div
                 key={chat.id || index}
                 onClick={() => setActiveChatId(chat.id)}
-                className={`p-3 flex items-center gap-3 cursor-pointer transition ${activeChatId === chat.id ? "bg-white/10" : "hover:bg-white/5"
+                className={`p-3 flex items-center gap-3 cursor-pointer transition ${activeChatId === chat.id ? "bg-primary-soft" : "hover:bg-surface-soft"
                   }`}
               >
                 {/* Avatar */}
@@ -120,22 +120,22 @@ export default function ChatListPanel({ type }: any) {
                 {/* Info */}
                 <div className="flex-1 min-w-0 flex flex-col justify-center">
                   <div className="flex justify-between items-center mb-1">
-                    <p className={`text-sm truncate ${hasUnread ? "text-white font-bold" : "text-gray-200 font-medium"}`}>
+                    <p className={`text-sm truncate ${hasUnread ? "text-foreground font-bold" : "text-foreground font-medium"}`}>
                       {title}
                     </p>
                     {mounted && lastMessage?.createdAt && (
-                      <span className="text-[10px] text-gray-500 whitespace-nowrap ml-2">
+                      <span className="text-[10px] text-muted whitespace-nowrap ml-2">
                         {formatRelativeTime(lastMessage.createdAt)}
                       </span>
                     )}
                   </div>
 
                   <div className="flex justify-between items-center">
-                    <p className={`text-xs truncate mr-2 ${hasUnread ? "text-gray-200 font-bold" : "text-gray-400"}`}>
+                    <p className={`text-xs truncate mr-2 ${hasUnread ? "text-foreground font-bold" : "text-muted"}`}>
                       {lastMessage?.content ? (lastMessage.content.length > 40 ? lastMessage.content.substring(0, 40) + "..." : lastMessage.content) : "No messages yet"}
                     </p>
                     {hasUnread && (
-                      <span className="bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                      <span className="bg-primary text-on-primary text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
                         {(chat.unreadCount || 0) > 9 ? "9+" : chat.unreadCount}
                       </span>
                     )}
@@ -145,7 +145,7 @@ export default function ChatListPanel({ type }: any) {
                     <p
                       className={`text-[10px] mt-1 ${!chat.isGroup && otherUser?.isOnline
                           ? "text-green-400"
-                          : "text-gray-500"
+                          : "text-muted"
                         }`}
                     >
                       {subtitle}

@@ -44,24 +44,24 @@ export default function RoomCodeShareSheet({
 
   return (
     <div className="fixed inset-0 z-100 bg-black/60 backdrop-blur-sm flex items-start justify-center pt-20">
-      <div className="w-125 bg-[#111827] rounded-xl shadow-2xl border border-white/10 overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-          <p className="text-white text-sm font-semibold">Share Room Code</p>
+      <div className="w-125 bg-surface rounded-xl shadow-2xl border border-border overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <p className="text-foreground text-sm font-semibold">Share Room Code</p>
           <button
             type="button"
             title="Close"
             aria-label="Close"
             onClick={onClose}
-            className="p-1 rounded-md text-gray-400 hover:bg-white/10 hover:text-white transition"
+            className="p-1 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         <div className="p-4 space-y-4">
-          <div className="rounded-lg bg-white/5 border border-white/10 p-4 text-center">
-            <p className="text-xs text-gray-400 mb-2">Room code</p>
-            <p className="text-2xl font-bold tracking-[0.3em] text-white">
+          <div className="rounded-lg bg-surface-soft border border-border p-4 text-center">
+            <p className="text-xs text-muted mb-2">Room code</p>
+            <p className="text-2xl font-bold tracking-[0.3em] text-foreground">
               {room.roomCode ?? "------"}
             </p>
             {!room.roomCodeActive && (
@@ -81,8 +81,8 @@ export default function RoomCodeShareSheet({
 
           {isCreator && (
             <>
-              <label className="flex items-center justify-between rounded-lg bg-white/5 border border-white/10 px-4 py-3">
-                <span className="text-sm text-gray-200">Allow joining via code</span>
+              <label className="flex items-center justify-between rounded-lg bg-surface-soft border border-border px-4 py-3">
+                <span className="text-sm text-foreground">Allow joining via code</span>
                 <input
                   type="checkbox"
                   checked={room.roomCodeActive}
@@ -90,7 +90,7 @@ export default function RoomCodeShareSheet({
                   onChange={(e) =>
                     toggleActive({ chatId: room.id, active: e.target.checked })
                   }
-                  className="h-4 w-4 accent-blue-600"
+                  className="h-4 w-4 accent-primary"
                 />
               </label>
 
@@ -101,7 +101,7 @@ export default function RoomCodeShareSheet({
                   regenerate(room.id);
                   showInfo("Generating a new room code...");
                 }}
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-gray-200 hover:bg-white/10 disabled:opacity-60 flex items-center justify-center gap-2"
+                className="w-full rounded-lg border border-border bg-surface-soft px-4 py-2.5 text-sm text-foreground hover:bg-surface-soft/70 disabled:opacity-60 flex items-center justify-center gap-2"
               >
                 <RefreshCw className="w-4 h-4" />
                 {regenerating ? "Regenerating..." : "Regenerate Code"}

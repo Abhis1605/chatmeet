@@ -18,14 +18,15 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-[#0b1220] to-[#111827]">
+    <div className="min-h-screen flex items-center justify-center bg-background">
 
       <AuthCard>
 
-        <div className="text-center mb-6">
-          <img src="/chatmeet-logo.png" className="mx-auto h-12 mb-2" alt="logo-png" />
-          <h1 className="text-2xl font-bold text-white">ChatMeet</h1>
-          <p className="text-sm text-gray-400">
+        <div className="text-center mb-4">
+          <div className="inline-block">
+            <img src="/chatmeet-logo.png" className="h-30 w-60 object-contain" alt="ChatMeet logo" />
+          </div>
+          <p className="text-sm text-muted">
             Create your account
           </p>
         </div>
@@ -54,9 +55,9 @@ export default function RegisterPage() {
           {isPending ? "Creating..." : "Create Account"}
         </button>
 
-        <p className="text-center text-sm text-gray-400 mt-6">
+        <p className="text-center text-sm text-muted mt-6">
           Already have an account?{" "}
-          <Link href="/login" className="text-blue-400">
+          <Link href="/login" className="text-primary">
             Login
           </Link>
         </p>

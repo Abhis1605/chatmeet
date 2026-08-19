@@ -65,7 +65,7 @@ export default function VideoCallMainPanel() {
 
   if (!activeChatId) {
     return (
-      <div className="h-full flex items-center justify-center text-gray-400">
+      <div className="h-full flex items-center justify-center text-muted">
         Select a chat or group to start a video call
       </div>
     );
@@ -85,10 +85,10 @@ export default function VideoCallMainPanel() {
 
   return (
     <div className="h-full flex flex-col items-center justify-center gap-4">
-      {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+      {error && <p className="text-error text-sm text-center">{error}</p>}
 
       {isLoadingActiveCall ? (
-        <p className="text-gray-400 text-sm">Checking for an active call...</p>
+        <p className="text-muted text-sm">Checking for an active call...</p>
       ) : activeCall ? (
         <button
           type="button"
