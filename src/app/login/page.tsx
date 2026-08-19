@@ -100,8 +100,10 @@ export default function LoginPage() {
         </button>
 
         {/* Divider */}
-        <div className="my-6 text-center text-sm text-muted">
+        <div className="my-6 flex items-center gap-3 text-sm text-muted">
+          <div className="h-px flex-1 bg-border" />
           OR CONTINUE WITH
+          <div className="h-px flex-1 bg-border" />
         </div>
 
         {/* OAuth */}
