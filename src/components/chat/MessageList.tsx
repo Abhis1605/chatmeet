@@ -62,7 +62,7 @@ export default function MessageList({
 
   if (!messages.length) {
     return (
-      <div className="flex-1 flex items-center justify-center text-gray-500">
+      <div className="flex-1 flex items-center justify-center text-muted">
         No messages yet
       </div>
     );
@@ -75,7 +75,7 @@ export default function MessageList({
     >
       <div ref={topSentinelRef} />
       {isLoadingMore && (
-        <div className="text-center text-gray-500 text-xs">Loading older messages...</div>
+        <div className="text-center text-muted text-xs">Loading older messages...</div>
       )}
 
       {messages.map((message) => (

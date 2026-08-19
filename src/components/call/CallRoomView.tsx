@@ -78,7 +78,7 @@ function CallRoomInner({ sessionId, token, userName, isStarter, onLeave }: CallR
 
   if (joinError) {
     return (
-      <div className="p-6 text-center text-red-400">
+      <div className="p-6 text-center text-error">
         {joinError}
         <button
           onClick={onLeave}
@@ -92,7 +92,7 @@ function CallRoomInner({ sessionId, token, userName, isStarter, onLeave }: CallR
 
   if (!isConnected) {
     return (
-      <div className="p-6 text-center text-gray-400">Joining call...</div>
+      <div className="p-6 text-center text-muted">Joining call...</div>
     );
   }
 
@@ -141,7 +141,7 @@ function CallRoomInner({ sessionId, token, userName, isStarter, onLeave }: CallR
             onClick={handleEndCall}
             disabled={isEnding}
             title="End call for everyone"
-            className="p-3 rounded-full bg-red-600 text-white hover:bg-red-700 transition flex items-center gap-2 px-4 disabled:opacity-50"
+            className="p-3 rounded-full bg-error text-on-primary hover:opacity-90 transition flex items-center gap-2 px-4 disabled:opacity-50"
           >
             <PhoneOff size={18} />
             <span className="text-sm">{isEnding ? "Ending..." : "End Call"}</span>

@@ -74,34 +74,34 @@ export default function RoomMembersModal({
 
   return (
     <div className="fixed inset-0 z-100 bg-black/60 backdrop-blur-sm flex items-start justify-center pt-16">
-      <div className="w-140 max-w-[92vw] bg-[#111827] rounded-xl shadow-2xl border border-white/10 overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+      <div className="w-140 max-w-[92vw] bg-surface rounded-xl shadow-2xl border border-border overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <div>
-            <p className="text-white text-sm font-semibold">{room.name}</p>
-            <p className="text-gray-400 text-xs">{room.members.length} members</p>
+            <p className="text-foreground text-sm font-semibold">{room.name}</p>
+            <p className="text-muted text-xs">{room.members.length} members</p>
           </div>
           <button
             type="button"
             title="Close"
             aria-label="Close"
             onClick={onClose}
-            className="p-1 rounded-md text-gray-400 hover:bg-white/10 hover:text-white transition"
+            className="p-1 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         <div className="p-4 space-y-4">
-          <Command shouldFilter={false} className="rounded-lg border border-white/10 overflow-hidden bg-[#0f172a]">
+          <Command shouldFilter={false} className="rounded-lg border border-border overflow-hidden bg-surface-soft">
             <CommandInput
               placeholder="Invite member by email..."
               value={search}
               onValueChange={setSearch}
-              className="px-4 py-3 text-white bg-transparent outline-none border-b border-white/10"
+              className="px-4 py-3 text-foreground bg-transparent outline-none border-b border-border"
             />
             <CommandList className="max-h-44 overflow-y-auto">
               {results.length === 0 && search && (
-                <CommandEmpty className="p-4 text-gray-400 text-sm">
+                <CommandEmpty className="p-4 text-muted text-sm">
                   No new user found
                 </CommandEmpty>
               )}
@@ -111,7 +111,7 @@ export default function RoomMembersModal({
                   key={user.id}
                   value={`${user.name} ${user.email}`}
                   onSelect={() => handleInvite(user)}
-                  className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/10 transition"
+                  className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-surface-soft transition"
                 >
                   <img
                     src={user.image || "/default-avatar.png"}
@@ -119,12 +119,12 @@ export default function RoomMembersModal({
                     className="w-9 h-9 rounded-full object-cover"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-medium truncate">
+                    <p className="text-foreground text-sm font-medium truncate">
                       {user.name || "No Name"}
                     </p>
-                    <p className="text-gray-400 text-xs truncate">{user.email}</p>
+                    <p className="text-muted text-xs truncate">{user.email}</p>
                   </div>
-                  <UserPlus className="w-4 h-4 text-gray-400" />
+                  <UserPlus className="w-4 h-4 text-muted" />
                 </CommandItem>
               ))}
             </CommandList>
@@ -134,7 +134,7 @@ export default function RoomMembersModal({
             {room.members.map((member) => (
               <div
                 key={member.id}
-                className="flex items-center gap-3 rounded-lg bg-white/5 border border-white/10 p-3"
+                className="flex items-center gap-3 rounded-lg bg-surface-soft border border-border p-3"
               >
                 <img
                   src={member.user?.image || "/default-avatar.png"}
@@ -143,14 +143,14 @@ export default function RoomMembersModal({
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-white text-sm font-medium truncate">
+                    <p className="text-foreground text-sm font-medium truncate">
                       {member.user?.name || member.user?.email}
                     </p>
-                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-gray-300">
+                    <span className="rounded-full bg-surface-soft px-2 py-0.5 text-[10px] text-muted">
                       {member.role}
                     </span>
                   </div>
-                  <p className="text-gray-400 text-xs truncate">{member.user?.email}</p>
+                  <p className="text-muted text-xs truncate">{member.user?.email}</p>
                 </div>
               </div>
             ))}
@@ -180,7 +180,7 @@ export default function RoomMembersModal({
                   onSuccess: () => onClose(),
                 })
               }
-              className="w-full rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm text-red-200 hover:bg-red-500/20 disabled:opacity-60 transition flex items-center justify-center gap-2"
+              className="w-full rounded-lg border border-error/30 bg-error-soft px-4 py-2.5 text-sm text-error hover:bg-error-soft/80 disabled:opacity-60 transition flex items-center justify-center gap-2"
             >
               <Trash2 className="w-4 h-4" />
               {isDeleting ? "Deleting..." : "Delete Room"}

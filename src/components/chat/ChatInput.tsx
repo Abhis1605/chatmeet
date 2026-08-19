@@ -28,7 +28,7 @@ export default function ChatInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="relative border-t border-white/10 bg-[#0f172a]">
+    <div className="relative border-t border-border bg-surface">
       {/* Attachment Popup */}
       <AttachmentMenu
         open={openAttachment}
@@ -71,9 +71,9 @@ export default function ChatInput({
           type="button"
           title="Emoji"
           aria-label="Open emoji picker"
-          className="p-2 rounded-full hover:bg-white/10 transition"
+          className="p-2 rounded-full hover:bg-surface-soft transition"
         >
-          <Smile className="w-5 h-5 text-gray-400" />
+          <Smile className="w-5 h-5 text-muted" />
         </button>
 
         {/* Attachment */}
@@ -83,9 +83,9 @@ export default function ChatInput({
           aria-label="Attach file"
           disabled={disabled}
           onClick={() => setOpenAttachment(!openAttachment)}
-          className="p-2 rounded-full hover:bg-white/10 disabled:opacity-40 disabled:hover:bg-transparent transition"
+          className="p-2 rounded-full hover:bg-surface-soft disabled:opacity-40 disabled:hover:bg-transparent transition"
         >
-          <Paperclip className="w-5 h-5 text-gray-400" />
+          <Paperclip className="w-5 h-5 text-muted" />
         </button>
 
         {/* Input */}
@@ -100,7 +100,7 @@ export default function ChatInput({
             }
           }}
           placeholder={placeholder}
-          className="flex-1 rounded-full bg-white/5 px-5 py-3 text-white outline-none border border-white/10 focus:border-blue-500 disabled:cursor-not-allowed disabled:text-gray-500"
+          className="flex-1 rounded-full bg-surface-soft px-5 py-3 text-foreground outline-none border border-border focus:border-primary disabled:cursor-not-allowed disabled:text-muted"
         />
 
         {/* Send */}
@@ -111,9 +111,9 @@ export default function ChatInput({
           aria-label="Send message"
           disabled={disabled}
           onClick={onSend}
-          className="w-11 h-11 rounded-full bg-blue-600 hover:bg-blue-700 disabled:bg-white/10 disabled:cursor-not-allowed transition flex items-center justify-center"
+          className="w-11 h-11 rounded-full bg-primary hover:bg-primary-hover disabled:bg-surface-soft disabled:cursor-not-allowed transition flex items-center justify-center"
         >
-          <SendHorizontal className="w-5 h-5 text-white" />
+          <SendHorizontal className="w-5 h-5 text-on-primary" />
         </button>
       </div>
     </div>

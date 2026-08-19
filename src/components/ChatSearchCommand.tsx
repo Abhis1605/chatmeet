@@ -68,18 +68,18 @@ export default function ChatSearchCommand({
   return (
     <div className="fixed inset-0 z-100 bg-black/60 backdrop-blur-sm flex items-start justify-center pt-24">
 
-      <div className="w-125 bg-[#111827] rounded-xl shadow-2xl border border-white/10 overflow-hidden">
+      <div className="w-125 bg-surface rounded-xl shadow-2xl border border-border overflow-hidden">
 
         {/* HEADER */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-          <p className="text-white text-sm font-semibold">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <p className="text-foreground text-sm font-semibold">
             Search Users
           </p>
 
           {/* CLOSE BUTTON */}
           <button
             onClick={() => setOpen(false)}
-            className="text-gray-400 hover:text-white text-lg transition"
+            className="text-muted hover:text-foreground text-lg transition"
           >
             ✕
           </button>
@@ -93,7 +93,7 @@ export default function ChatSearchCommand({
             placeholder="Search by name or email..."
             value={search}
             onValueChange={setSearch}
-            className="px-4 py-3 text-white bg-transparent outline-none border-b border-white/10"
+            className="px-4 py-3 text-foreground bg-transparent outline-none border-b border-border"
           />
 
           {/* LIST */}
@@ -101,7 +101,7 @@ export default function ChatSearchCommand({
 
             {/* EMPTY */}
             {results.length === 0 && search && (
-              <CommandEmpty className="p-4 text-gray-400 text-sm">
+              <CommandEmpty className="p-4 text-muted text-sm">
                 No user found
               </CommandEmpty>
             )}
@@ -112,7 +112,7 @@ export default function ChatSearchCommand({
                 key={user.id}
                 value={`${user.name} ${user.email}`} 
                 onSelect={() => startChat(user)}
-                className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/10 transition"
+                className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-surface-soft transition"
               >
                 {/* AVATAR */}
                 <img
@@ -123,13 +123,13 @@ export default function ChatSearchCommand({
 
                 {/* NFO */}
                 <div className="flex flex-col">
-                  <span className="text-white text-sm font-medium">
+                  <span className="text-foreground text-sm font-medium">
                     {user.name || "No Name"}
                   </span>
-                  <span className="text-gray-400 text-xs">
+                  <span className="text-muted text-xs">
                     {user.email}
                   </span>
-                  <span className={`text-xs ${user.isOnline ? "text-green-400" : "text-gray-500"}`}>
+                  <span className={`text-xs ${user.isOnline ? "text-green-400" : "text-muted"}`}>
                     {formatPresence(user)}
                   </span>
                 </div>

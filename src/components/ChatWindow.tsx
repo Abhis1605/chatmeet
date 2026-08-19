@@ -180,7 +180,7 @@ export default function ChatWindow() {
 
   if (!selectedChat) {
     return (
-      <div className="h-full flex items-center justify-center text-gray-400">
+      <div className="h-full flex items-center justify-center text-muted">
         Select a chat
       </div>
     );
@@ -218,7 +218,7 @@ export default function ChatWindow() {
         isLoadingMore={isFetchingNextPage}
       />
 
-      <div className="p-4 gap-2 border-t border-white/10">
+      <div className="p-4 gap-2 border-t border-border">
         <ChatInput
           input={input}
           onChange={handleTyping}

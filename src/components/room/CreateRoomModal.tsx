@@ -43,15 +43,15 @@ export default function CreateRoomModal({ open, onClose }: CreateRoomModalProps)
 
   return (
     <div className="fixed inset-0 z-100 bg-black/60 backdrop-blur-sm flex items-start justify-center pt-20">
-      <div className="w-125 bg-[#111827] rounded-xl shadow-2xl border border-white/10 overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-          <p className="text-white text-sm font-semibold">Create Room</p>
+      <div className="w-125 bg-surface rounded-xl shadow-2xl border border-border overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <p className="text-foreground text-sm font-semibold">Create Room</p>
           <button
             type="button"
             title="Close"
             aria-label="Close"
             onClick={onClose}
-            className="p-1 rounded-md text-gray-400 hover:bg-white/10 hover:text-white transition"
+            className="p-1 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition"
           >
             <X className="w-4 h-4" />
           </button>
@@ -62,7 +62,7 @@ export default function CreateRoomModal({ open, onClose }: CreateRoomModalProps)
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Room name"
-            className="w-full rounded-lg bg-white/5 px-4 py-3 text-white outline-none border border-white/10 focus:border-blue-500"
+            className="w-full rounded-lg bg-surface-soft px-4 py-3 text-foreground outline-none border border-border focus:border-primary"
           />
 
           <button

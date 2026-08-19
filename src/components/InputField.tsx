@@ -14,7 +14,7 @@ export default function InputField({ label, type, ...props }: Props) {
 
   return (
     <div className="w-full">
-      <label className="block text-sm text-(--color-text-muted) mb-1">
+      <label className="block text-sm text-muted mb-1">
         {label}
       </label>
 
@@ -22,8 +22,8 @@ export default function InputField({ label, type, ...props }: Props) {
         <input
           {...props}
           type={isPassword ? (show ? "text" : "password") : type}
-          className="w-full p-3 rounded-lg bg-[#1f2937] text-white border border-(--color-border)
-          focus:outline-none focus:ring-2 focus:ring-[(--color-primary-light) pr-10"
+          className="w-full p-3 rounded-lg bg-surface-soft text-foreground border border-border
+          focus:outline-none focus:ring-2 focus:ring-primary pr-10"
         />
 
         {/* Toggle */}
@@ -31,7 +31,7 @@ export default function InputField({ label, type, ...props }: Props) {
           <button
             type="button"
             onClick={() => setShow(!show)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-foreground"
           >
             {show ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>

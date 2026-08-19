@@ -43,7 +43,7 @@ export default function ChatHeader({
   };
 
   return (
-    <div className="h-18 px-5 border-b border-white/10 flex items-center gap-3 bg-[#0f172a]">
+    <div className="h-18 px-5 border-b border-border flex items-center gap-3 bg-surface">
 
       <img
         src={chat?.isGroup ? "/chatmeet-collapsed-logo.png" : otherUser?.image || "/default-avatar.png"}
@@ -52,14 +52,14 @@ export default function ChatHeader({
       />
 
       <div className="flex flex-col flex-1 min-w-0">
-        <h3 className="text-white font-semibold">
+        <h3 className="text-foreground font-semibold">
           {title}
         </h3>
 
         <span
           className={`text-xs transition ${!chat?.isGroup && isTyping
               ? "text-green-400 animate-pulse"
-              : "text-gray-400"
+              : "text-muted"
             }`}
         >
           {subtitle}
@@ -76,7 +76,7 @@ export default function ChatHeader({
             aria-label="Start group video call"
             onClick={handleGroupVideoCall}
             disabled={isStartingCall}
-            className="p-2 rounded-md text-gray-400 hover:bg-white/10 hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-2 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Video className="w-5 h-5" />
           </button>
@@ -86,7 +86,7 @@ export default function ChatHeader({
             title="Manage group"
             aria-label="Manage group"
             onClick={onManageGroup}
-            className="p-2 rounded-md text-gray-400 hover:bg-white/10 hover:text-white transition"
+            className="p-2 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition"
           >
             <Users className="w-5 h-5" />
           </button>
