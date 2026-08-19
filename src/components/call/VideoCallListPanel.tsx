@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useChatUIStore } from "@/store/chat-ui-store";
 import { useChats } from "@/hooks/queries/use-chats";
 import { useCallHistory } from "@/hooks/queries/use-call-history";
+import Spinner from "../Spinner";
 
 const formatDuration = (seconds: number | null) => {
   if (seconds === null) return "In progress";
@@ -84,11 +85,16 @@ export default function VideoCallListPanel() {
       <div className="flex-1 overflow-y-auto">
         {subTab === "personal" ? (
           <>
-            {isLoading && <div className="p-4 text-center text-muted text-sm">Loading...</div>}
+            {isLoading && <Spinner />}
 
             {Array.isArray(chats) && chats.length === 0 && !isLoading && (
-              <div className="p-4 text-center text-muted text-sm">
-                No personal chats yet
+              <div className="flex flex-col items-center justify-center gap-3 p-8 text-center text-muted">
+                <img
+                  src="/empty-state-no-messages.png"
+                  alt="No chats"
+                  className="w-32 h-32 object-contain opacity-90"
+                />
+                <p className="text-sm">No personal chats yet</p>
               </div>
             )}
 
@@ -133,13 +139,16 @@ export default function VideoCallListPanel() {
           </>
         ) : (
           <>
-            {isLoadingHistory && (
-              <div className="p-4 text-center text-muted text-sm">Loading...</div>
-            )}
+            {isLoadingHistory && <Spinner />}
 
             {!isLoadingHistory && historyCalls.length === 0 && (
-              <div className="p-4 text-center text-muted text-sm">
-                No call history yet
+              <div className="flex flex-col items-center justify-center gap-3 p-8 text-center text-muted">
+                <img
+                  src="/empty-state-no-calls.png"
+                  alt="No calls"
+                  className="w-32 h-32 object-contain opacity-90"
+                />
+                <p className="text-sm">No call history yet</p>
               </div>
             )}
 

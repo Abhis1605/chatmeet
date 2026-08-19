@@ -8,7 +8,7 @@ export default function PendingInvitesList() {
   const { mutate: respond, isPending } = useRespondInvite();
 
   if (isLoading) {
-    return <div className="p-3 text-xs text-muted">Loading invites...</div>;
+    return null;
   }
 
   if (invites.length === 0) {

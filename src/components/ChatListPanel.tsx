@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import GroupCreateModal from "./group/GroupCreateModal";
 import { Plus } from "lucide-react";
 import { useChats } from "@/hooks/queries/use-chats";
+import Spinner from "./Spinner";
 
 export default function ChatListPanel({ type }: any) {
   const { data: session } = useSession();
@@ -78,7 +79,19 @@ export default function ChatListPanel({ type }: any) {
 
       {/* CHAT LIST */}
       <div className="flex-1 overflow-y-auto">
-        {isLoading && <div className="p-4 text-center text-muted text-sm">Loading...</div>}
+        {isLoading && <Spinner />}
+
+        {!isLoading && Array.isArray(chats) && chats.length === 0 && (
+          <div className="flex flex-col items-center justify-center gap-3 p-8 text-center text-muted">
+            <img
+              src={type === "personal" ? "/empty-state-no-messages.png" : "/empty-state-no-chats.png"}
+              alt="No chats"
+              className="w-32 h-32 object-contain opacity-90"
+            />
+            <p className="text-sm capitalize">No {type} chats yet</p>
+          </div>
+        )}
+
         {Array.isArray(chats) &&
           [...chats].sort((a, b) => {
             const dateA = a.lastMessage?.createdAt || a.updatedAt;

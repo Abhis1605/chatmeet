@@ -7,6 +7,7 @@ import { useRooms } from "@/hooks/queries/use-rooms";
 import CreateRoomModal from "./CreateRoomModal";
 import JoinRoomModal from "./JoinRoomModal";
 import PendingInvitesList from "./PendingInvitesList";
+import Spinner from "../Spinner";
 
 export default function RoomListPanel() {
   const { activeRoomChatId, setActiveRoomChatId } = useChatUIStore();
@@ -66,8 +67,17 @@ export default function RoomListPanel() {
       <PendingInvitesList />
 
       <div className="flex-1 overflow-y-auto">
-        {isLoading && (
-          <div className="p-4 text-center text-muted text-sm">Loading...</div>
+        {isLoading && <Spinner />}
+
+        {!isLoading && rooms.length === 0 && (
+          <div className="flex flex-col items-center justify-center gap-3 p-8 text-center text-muted">
+            <img
+              src="/empty-state-no-chats.png"
+              alt="No rooms"
+              className="w-32 h-32 object-contain opacity-90"
+            />
+            <p className="text-sm">No rooms yet</p>
+          </div>
         )}
 
         {[...rooms]
