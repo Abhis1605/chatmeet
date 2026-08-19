@@ -62,8 +62,13 @@ export default function MessageList({
 
   if (!messages.length) {
     return (
-      <div className="flex-1 flex items-center justify-center text-muted">
-        No messages yet
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted">
+        <img
+          src="/empty-state-no-messages.png"
+          alt="No messages"
+          className="w-40 h-40 object-contain opacity-90"
+        />
+        <p className="text-sm">No messages yet</p>
       </div>
     );
   }
