@@ -12,8 +12,10 @@ export default function MessageBubble({ message, isMe, showSender = false }: Pro
   return (
     <div className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
       <div
-        className={`rounded-2xl px-3 py-2 max-w-[320px] ${
-          isMe ? "bg-primary rounded-tr-none" : "bg-surface-soft rounded-tl-none"
+        className={`rounded-lg px-3 py-2 max-w-[320px] border shadow-sm ${
+          isMe
+            ? "bg-surface-soft border-primary/30 rounded-br-none"
+            : "bg-surface border-border rounded-bl-none"
         }`}
       >
         {showSender && !isMe && (
@@ -24,7 +26,7 @@ export default function MessageBubble({ message, isMe, showSender = false }: Pro
 
         {/* TEXT */}
         {message.type === "TEXT" && (
-          <p className={`text-sm wrap-break-word ${isMe ? "text-on-primary" : "text-foreground"}`}>{message.content}</p>
+          <p className="text-sm wrap-break-word text-foreground">{message.content}</p>
         )}
 
         {/* IMAGE */}
@@ -56,16 +58,16 @@ export default function MessageBubble({ message, isMe, showSender = false }: Pro
             <File className="w-7 h-7" />
 
             <div>
-              <p className={`font-medium ${isMe ? "text-on-primary" : "text-foreground"}`}>{message.fileName}</p>
+              <p className="font-medium text-foreground">{message.fileName}</p>
 
-              <p className={`text-xs ${isMe ? "text-on-primary" : "text-muted"}`}>
+              <p className="text-xs text-muted">
                 {(message.fileSize / 1024 / 1024).toFixed(2)} MB
               </p>
             </div>
           </a>
         )}
 
-        <p className={`text-[10px] text-right mt-1 ${isMe ? "text-on-primary" : "text-muted"}`}>
+        <p className="text-[10px] text-right mt-1 text-muted">
           {new Date(message.createdAt).toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",
