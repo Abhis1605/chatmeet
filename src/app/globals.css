@@ -99,25 +99,39 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-mono);
 }
 
-.chat-scroll::-webkit-scrollbar {
-  width: 7px;
+.btn-primary {
+  background-color: var(--primary);
+  color: var(--on-primary);
+  font-weight: 500;
+  border-radius: var(--radius-lg);
+  padding: 0.625rem 1.25rem;
+  transition: background-color 0.15s ease;
 }
 
-.chat-scroll::-webkit-scrollbar-track {
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+}
+
+*::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+*::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.chat-scroll::-webkit-scrollbar-thumb {
+*::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 999px;
 }
 
-.chat-scroll::-webkit-scrollbar-thumb:hover {
+*::-webkit-scrollbar-thumb:hover {
   background: var(--muted);
 }
 
 /* Firefox */
-.chat-scroll {
+* {
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
