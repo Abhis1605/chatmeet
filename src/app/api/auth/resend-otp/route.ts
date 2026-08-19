@@ -28,9 +28,18 @@ export async function POST(req: Request) {
     },
   });
 
-  console.log(otp)
-
-  await sendOTPEmail(email, otp)
+  try {
+    await sendOTPEmail(email, otp)
+  } catch (err) {
+    console.error("Failed to send OTP email:", err)
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`[DEV] OTP for ${email}: ${otp}`)
+    } else {
+      return Response.json({
+        error: "Failed to send verification email. Please try again later.",
+      });
+    }
+  }
 
   return Response.json({ success: true });
 }
