@@ -93,7 +93,7 @@ export default function ChatSearchCommand({
             placeholder="Search by name or email..."
             value={search}
             onValueChange={setSearch}
-            className="px-4 py-3 text-foreground bg-transparent outline-none border-b border-border"
+            className="w-full px-4 py-3 text-foreground bg-transparent outline-none border-b border-border"
           />
 
           {/* LIST */}
