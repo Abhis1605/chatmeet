@@ -7,6 +7,7 @@ import { Check, Plus, X } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { useUserSearch } from "@/hooks/queries/use-user-search";
 import { useCreateGroup } from "@/hooks/mutations/use-create-group";
+import { getAvatarSrc } from "@/lib/avatars";
 
 interface GroupCreateModalProps {
   open: boolean;
@@ -85,7 +86,7 @@ export default function GroupCreateModal({ open, onClose }: GroupCreateModalProp
             title="Close"
             aria-label="Close"
             onClick={onClose}
-            className="p-1 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition"
+            className="p-1 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -106,7 +107,7 @@ export default function GroupCreateModal({ open, onClose }: GroupCreateModalProp
                   key={user.id}
                   type="button"
                   onClick={() => toggleUser(user)}
-                  className="flex items-center gap-2 rounded-full bg-primary-soft border border-primary/30 px-3 py-1.5 text-xs text-primary"
+                  className="flex items-center gap-2 rounded-full bg-primary-soft border border-primary/30 px-3 py-1.5 text-xs text-primary cursor-pointer"
                 >
                   {user.name || user.email}
                   <X className="w-3 h-3" />
@@ -140,7 +141,7 @@ export default function GroupCreateModal({ open, onClose }: GroupCreateModalProp
                     className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-surface-soft transition"
                   >
                     <img
-                      src={user.image || "/default-avatar.png"}
+                      src={getAvatarSrc(user)}
                       alt="avatar"
                       className="w-9 h-9 rounded-full object-cover"
                     />

@@ -13,6 +13,7 @@ import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { useUserSearch } from "@/hooks/queries/use-user-search";
 import { useCreateChat } from "@/hooks/mutations/use-create-chat";
+import { getAvatarSrc } from "@/lib/avatars";
 
 export default function ChatSearchCommand({
   open,
@@ -79,7 +80,7 @@ export default function ChatSearchCommand({
           {/* CLOSE BUTTON */}
           <button
             onClick={() => setOpen(false)}
-            className="text-muted hover:text-foreground text-lg transition"
+            className="text-muted hover:text-foreground text-lg transition cursor-pointer"
           >
             ✕
           </button>
@@ -116,7 +117,7 @@ export default function ChatSearchCommand({
               >
                 {/* AVATAR */}
                 <img
-                  src={user.image || "/default-avatar.png"}
+                  src={getAvatarSrc(user)}
                   alt="avatar"
                   className="w-9 h-9 rounded-full object-cover"
                 />

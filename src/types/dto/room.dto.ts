@@ -18,6 +18,7 @@ export interface RoomMemberDto {
 export interface RoomDto {
   id: string;
   name: string;
+  image: string | null;
   isRoom: true;
   isGroup: false;
   roomCode: string | null;
@@ -40,7 +41,7 @@ export interface PendingInviteDto {
   chatId: string;
   chat: { id: string; name: string };
   invitedById: string;
-  invitedBy: Pick<UserDto, "id" | "name" | "image" | "email">;
+  invitedBy: Pick<UserDto, "id" | "name" | "image" | "profilePhotoType" | "avatarFilename" | "email">;
   invitedUserId: string;
   status: "PENDING";
   createdAt: string;

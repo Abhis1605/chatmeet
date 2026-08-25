@@ -174,7 +174,7 @@ export default function RoomChatWindow() {
     <div className="h-full flex flex-col">
       <div className="h-18 px-5 border-b border-border flex items-center gap-3 bg-surface-soft">
         <img
-          src="/chatmeet-collapsed-logo.png"
+          src={selectedRoom.image || "/chatmeet-collapsed-logo.png"}
           alt="room"
           className="w-11 h-11 rounded-full object-cover"
         />
@@ -195,7 +195,7 @@ export default function RoomChatWindow() {
           title="Share room code"
           aria-label="Share room code"
           onClick={() => setOpenShareCode(true)}
-          className="p-2 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition"
+          className="p-2 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition cursor-pointer"
         >
           <Hash className="w-5 h-5" />
         </button>
@@ -205,7 +205,7 @@ export default function RoomChatWindow() {
           title="Room members"
           aria-label="Room members"
           onClick={() => setOpenMembers(true)}
-          className="p-2 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition"
+          className="p-2 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition cursor-pointer"
         >
           <Users className="w-5 h-5" />
         </button>

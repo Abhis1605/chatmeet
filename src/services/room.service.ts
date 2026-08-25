@@ -1,5 +1,6 @@
 import apiClient from "@/lib/axios";
 import type { RoomDto, RoomMemberDto } from "@/types/dto/room.dto";
+import type { UpdateChatDetailsRequest } from "@/types/dto/chat.dto";
 
 /**
  * room.service.ts — pure axios functions for Room feature.
@@ -21,6 +22,15 @@ export async function joinRoomByCode(roomCode: string): Promise<RoomDto> {
 // POST /api/room/:chatId/leave
 export async function leaveRoom(chatId: string): Promise<{ success: boolean }> {
   const { data } = await apiClient.post<{ success: boolean }>(`/room/${chatId}/leave`);
+  return data;
+}
+
+// PATCH /api/room/:chatId — { name?, image? }
+export async function updateRoomDetails(
+  chatId: string,
+  body: UpdateChatDetailsRequest
+): Promise<RoomDto> {
+  const { data } = await apiClient.patch<RoomDto>(`/room/${chatId}`, body);
   return data;
 }
 

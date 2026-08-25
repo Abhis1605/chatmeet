@@ -5,11 +5,12 @@ import { queryKeys } from "@/lib/query-keys";
 import {
   addGroupMember,
   updateGroupMember,
+  updateGroupDetails,
   removeGroupMember,
   deleteGroup,
 } from "@/services/chat.service";
 import { useChatUIStore } from "@/store/chat-ui-store";
-import type { ChatDto, ChatMemberRole } from "@/types/dto/chat.dto";
+import type { ChatDto, ChatMemberRole, UpdateChatDetailsRequest } from "@/types/dto/chat.dto";
 import { showError, showSuccess } from "@/lib/toast";
 
 /**
@@ -67,6 +68,23 @@ export function useUpdateGroupMember() {
     },
 
     onError: () => showError("Failed to update member"),
+  });
+}
+
+/** useUpdateGroupDetails */
+export function useUpdateGroupDetails() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ chatId, ...body }: { chatId: string } & UpdateChatDetailsRequest) =>
+      updateGroupDetails(chatId, body),
+
+    onSuccess: (updatedChat) => {
+      updateChatInCache(queryClient, updatedChat);
+      showSuccess("Group updated");
+    },
+
+    onError: () => showError("Failed to update group"),
   });
 }
 

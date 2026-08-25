@@ -27,7 +27,7 @@ export default function AttachmentMenu({
           imageInputRef.current?.click();
           onClose();
         }}
-        className="flex w-full items-center gap-3 rounded-xl p-3 transition hover:bg-surface-soft"
+        className="flex w-full items-center gap-3 rounded-xl p-3 transition hover:bg-surface-soft cursor-pointer"
       >
         <ImageIcon className="h-5 w-5 text-green-400" />
 
@@ -42,7 +42,7 @@ export default function AttachmentMenu({
           fileInputRef.current?.click();
           onClose();
         }}
-        className="mt-1 flex w-full items-center gap-3 rounded-xl p-3 transition hover:bg-white/5"
+        className="mt-1 flex w-full items-center gap-3 rounded-xl p-3 transition hover:bg-white/5 cursor-pointer"
       >
         <File className="h-5 w-5 text-blue-400" />
 

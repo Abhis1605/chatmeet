@@ -5,6 +5,7 @@ import type {
   CreateGroupChatRequest,
   DeleteGroupResponse,
   UpdateGroupMemberRequest,
+  UpdateChatDetailsRequest,
 } from "@/types/dto/chat.dto";
 
 /**
@@ -76,6 +77,15 @@ export async function removeGroupMember(
   const { data } = await apiClient.delete<ChatDto>(
     `/group/${chatId}/members?memberId=${memberId}`
   );
+  return data;
+}
+
+// PATCH /api/group/:chatId — body: { name?, image? }
+export async function updateGroupDetails(
+  chatId: string,
+  body: UpdateChatDetailsRequest
+): Promise<ChatDto> {
+  const { data } = await apiClient.patch<ChatDto>(`/group/${chatId}`, body);
   return data;
 }
 

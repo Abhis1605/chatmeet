@@ -1,63 +1,14 @@
 "use client";
 
-import { useState } from "react";
 import { SIDEBAR_TOP, SIDEBAR_BOTTOM } from "@/lib/sidebarConfig";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import { useChatUIStore } from "@/store/chat-ui-store";
-import { signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { logoutUser } from "@/services/auth.service";
-import { showError } from "@/lib/toast";
+import { useLogout } from "@/hooks/use-logout";
 
 export default function Sidebar() {
   const { activeTab, setActiveTab, sidebarCollapsed: collapsed, setSidebarCollapsed: setCollapsed } = useChatUIStore();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const router = useRouter();
-
-  const confirmLogout = async (toastId: string | number) => {
-    if (isLoggingOut) return;
-
-    toast.dismiss(toastId);
-    const loadingToastId = toast.loading("Logging out...");
-    setIsLoggingOut(true);
-
-    try {
-      const data = await logoutUser();
-
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      await signOut({ redirect: false, callbackUrl: "/login" });
-      toast.dismiss(loadingToastId);
-      toast.success("Logged out successfully");
-      router.push("/login");
-      router.refresh();
-    } catch (error) {
-      toast.dismiss(loadingToastId);
-      showError(error instanceof Error ? error.message : "Failed to logout");
-      setIsLoggingOut(false);
-    }
-  };
-
-  const handleLogoutClick = () => {
-    if (isLoggingOut) return;
-
-    const toastId = toast("Are you sure you want to logout?", {
-      description: "You will need to verify your email before signing in again.",
-      duration: Infinity,
-      action: {
-        label: "Yes",
-        onClick: () => void confirmLogout(toastId),
-      },
-      cancel: {
-        label: "Cancel",
-        onClick: () => toast.dismiss(toastId),
-      },
-    });
-  };
+  const { isLoggingOut, handleLogoutClick } = useLogout();
 
   return (
     <div
@@ -104,7 +55,7 @@ export default function Sidebar() {
                       setActiveTab(item.id);
                     }
                   }}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition cursor-pointer
                   ${collapsed ? "justify-center" : ""}
                   ${
                     activeTab === item.id
@@ -145,13 +96,21 @@ export default function Sidebar() {
                   onClick={() => {
                     if (item.id === "logout") {
                       handleLogoutClick();
+                    } else if (item.id === "profile") {
+                      setActiveTab("profile");
+                    } else if (item.id === "settings") {
+                      setActiveTab("settings");
                     }
                   }}
                   disabled={item.id === "logout" && isLoggingOut}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition
-                  text-muted hover:bg-surface-soft hover:text-foreground
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition cursor-pointer
                   disabled:opacity-50 disabled:cursor-not-allowed
-                  ${collapsed ? "justify-center" : ""}`}
+                  ${collapsed ? "justify-center" : ""}
+                  ${
+                    activeTab === item.id
+                      ? "bg-surface-soft text-foreground"
+                      : "text-muted hover:bg-surface-soft hover:text-foreground"
+                  }`}
                 >
                   <Icon size={18} />
                   {!collapsed && <span>{item.label}</span>}
@@ -178,7 +137,7 @@ export default function Sidebar() {
           <div className="relative group">
             <button
               onClick={() => setCollapsed(!collapsed)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-surface-soft transition
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-surface-soft transition cursor-pointer
               ${collapsed ? "justify-center" : ""}`}
             >
               {collapsed ? (

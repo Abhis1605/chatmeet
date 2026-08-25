@@ -100,7 +100,7 @@ export default function RoomListPanel() {
               >
                 <img
                   alt="room"
-                  src="/chatmeet-collapsed-logo.png"
+                  src={room.image || "/chatmeet-collapsed-logo.png"}
                   className="w-10 h-10 rounded-full object-cover"
                 />
 

@@ -31,7 +31,7 @@ export default function InputField({ label, type, ...props }: Props) {
           <button
             type="button"
             onClick={() => setShow(!show)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-foreground"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-foreground cursor-pointer"
           >
             {show ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>

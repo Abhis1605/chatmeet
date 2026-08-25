@@ -11,12 +11,12 @@ import { create } from "zustand";
 interface ChatUIState {
   activeChatId: string | null;
   activeRoomChatId: string | null;
-  activeTab: "personal" | "group" | "room" | "video";
+  activeTab: "personal" | "group" | "room" | "video" | "profile" | "settings";
   sidebarCollapsed: boolean;
 
   setActiveChatId: (id: string | null) => void;
   setActiveRoomChatId: (id: string | null) => void;
-  setActiveTab: (tab: "personal" | "group" | "room" | "video") => void;
+  setActiveTab: (tab: "personal" | "group" | "room" | "video" | "profile" | "settings") => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
 }
 

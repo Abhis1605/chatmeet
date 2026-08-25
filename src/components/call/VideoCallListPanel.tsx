@@ -6,6 +6,7 @@ import { useChatUIStore } from "@/store/chat-ui-store";
 import { useChats } from "@/hooks/queries/use-chats";
 import { useCallHistory } from "@/hooks/queries/use-call-history";
 import Spinner from "../Spinner";
+import { getAvatarSrc } from "@/lib/avatars";
 
 const formatDuration = (seconds: number | null) => {
   if (seconds === null) return "In progress";
@@ -59,7 +60,7 @@ export default function VideoCallListPanel() {
           <button
             type="button"
             onClick={() => setSubTab("personal")}
-            className={`flex-1 py-1.5 text-sm rounded-md transition ${
+            className={`flex-1 py-1.5 text-sm rounded-md transition cursor-pointer ${
               subTab === "personal"
                 ? "bg-surface text-foreground"
                 : "text-muted hover:text-foreground"
@@ -70,7 +71,7 @@ export default function VideoCallListPanel() {
           <button
             type="button"
             onClick={() => setSubTab("history")}
-            className={`flex-1 py-1.5 text-sm rounded-md transition ${
+            className={`flex-1 py-1.5 text-sm rounded-md transition cursor-pointer ${
               subTab === "history"
                 ? "bg-surface text-foreground"
                 : "text-muted hover:text-foreground"
@@ -119,19 +120,34 @@ export default function VideoCallListPanel() {
                       activeChatId === chat.id ? "bg-surface-soft" : "hover:bg-surface-soft"
                     }`}
                   >
-                    <img
-                      alt="avatar-img"
-                      src={
-                        chat.isGroup
-                          ? "/chatmeet-collapsed-logo.png"
-                          : otherUser?.image || "/default-avatar.png"
-                      }
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
+                    <div className="relative shrink-0">
+                      <img
+                        alt="avatar-img"
+                        src={
+                          chat.isGroup
+                            ? chat.image || "/chatmeet-collapsed-logo.png"
+                            : getAvatarSrc(otherUser)
+                        }
+                        className="w-10 h-10 rounded-full object-cover"
+                      />
+                      {!chat.isGroup && (
+                        <span
+                          className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-surface ${
+                            otherUser?.isOnline ? "bg-green-500" : "bg-muted"
+                          }`}
+                        />
+                      )}
+                    </div>
 
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-foreground font-medium truncate">{title}</p>
-                      <p className="text-xs text-muted truncate">{subtitle}</p>
+                      <p
+                        className={`text-xs truncate ${
+                          !chat.isGroup && otherUser?.isOnline ? "text-green-500" : "text-muted"
+                        }`}
+                      >
+                        {subtitle}
+                      </p>
                     </div>
                   </div>
                 );
@@ -168,7 +184,7 @@ export default function VideoCallListPanel() {
                   <button
                     type="button"
                     onClick={() => setExpandedCallId(isExpanded ? null : call.id)}
-                    className="w-full p-3 text-left hover:bg-surface-soft transition"
+                    className="w-full p-3 text-left hover:bg-surface-soft transition cursor-pointer"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -198,7 +214,7 @@ export default function VideoCallListPanel() {
                         >
                           <div className="min-w-0 flex items-center gap-2">
                             <img
-                              src={participant.image || "/default-avatar.png"}
+                              src={getAvatarSrc(participant)}
                               alt="participant"
                               className="w-6 h-6 rounded-full object-cover"
                             />
@@ -223,7 +239,7 @@ export default function VideoCallListPanel() {
                 type="button"
                 onClick={() => fetchNextPage()}
                 disabled={isFetchingNextPage}
-                className="m-3 w-[calc(100%-1.5rem)] rounded-md bg-surface-soft py-2 text-sm text-foreground hover:opacity-90 disabled:opacity-50"
+                className="m-3 w-[calc(100%-1.5rem)] rounded-md bg-surface-soft py-2 text-sm text-foreground hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isFetchingNextPage ? "Loading..." : "Load more"}
               </button>

@@ -71,7 +71,7 @@ export default function ChatInput({
           type="button"
           title="Emoji"
           aria-label="Open emoji picker"
-          className="p-2 rounded-full hover:bg-surface-soft transition"
+          className="p-2 rounded-full hover:bg-surface-soft transition cursor-pointer"
         >
           <Smile className="w-5 h-5 text-muted" />
         </button>
@@ -83,7 +83,7 @@ export default function ChatInput({
           aria-label="Attach file"
           disabled={disabled}
           onClick={() => setOpenAttachment(!openAttachment)}
-          className="p-2 rounded-full hover:bg-surface-soft disabled:opacity-40 disabled:hover:bg-transparent transition"
+          className="p-2 rounded-full hover:bg-surface-soft disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer disabled:cursor-not-allowed"
         >
           <Paperclip className="w-5 h-5 text-muted" />
         </button>
@@ -111,7 +111,7 @@ export default function ChatInput({
           aria-label="Send message"
           disabled={disabled}
           onClick={onSend}
-          className="w-11 h-11 rounded-full bg-primary hover:bg-primary-hover disabled:bg-surface-soft disabled:cursor-not-allowed transition flex items-center justify-center"
+          className="w-11 h-11 rounded-full bg-primary hover:bg-primary-hover disabled:bg-surface-soft transition flex items-center justify-center cursor-pointer disabled:cursor-not-allowed"
         >
           <SendHorizontal className="w-5 h-5 text-on-primary" />
         </button>

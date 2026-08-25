@@ -111,7 +111,7 @@ export default function LoginPage() {
           <button
             onClick={() => handleOAuth('google')}
             disabled={loadingProvider !== null }
-            className="flex items-center justify-center flex-1 gap-2 py-3 rounded-lg border border-border text-foreground hover:bg-surface-soft"
+            className="flex items-center justify-center flex-1 gap-2 py-3 rounded-lg border border-border text-foreground hover:bg-surface-soft cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loadingProvider === "google" ? (
               <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
@@ -130,7 +130,7 @@ export default function LoginPage() {
 
           <button
             onClick={() => handleOAuth('github')}
-            className="flex items-center justify-center gap-2 flex-1 py-3 rounded-lg border border-border text-foreground hover:bg-surface-soft"
+            className="flex items-center justify-center gap-2 flex-1 py-3 rounded-lg border border-border text-foreground hover:bg-surface-soft cursor-pointer"
           >
              {loadingProvider === "github" ? (
               <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>

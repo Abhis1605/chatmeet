@@ -193,6 +193,53 @@ export default function SocketProvider({
       }
     };
 
+    // ── user-profile-updated: patch name/avatar in chat + room caches ───
+    const handleProfileUpdated = (data: {
+      userId: string;
+      name: string | null;
+      username: string | null;
+      image: string | null;
+      profilePhotoType: string | null;
+      avatarFilename: string | null;
+    }) => {
+      const patchUser = (user: any) =>
+        user.id === data.userId
+          ? {
+            ...user,
+            name: data.name,
+            image: data.image,
+            profilePhotoType: data.profilePhotoType,
+            avatarFilename: data.avatarFilename,
+          }
+          : user;
+
+      for (const type of ["personal", "group"] as const) {
+        queryClient.setQueryData<ChatDto[]>(queryKeys.chats.list(type), (prev) => {
+          if (!prev) return prev;
+          return prev.map((chat) => ({
+            ...chat,
+            members: chat.members.map((member) => ({
+              ...member,
+              user: patchUser(member.user),
+            })),
+          }));
+        });
+      }
+
+      queryClient.setQueryData<RoomDto[]>(queryKeys.chats.room(), (prev) => {
+        if (!prev) return prev;
+        return prev.map((room) => ({
+          ...room,
+          members: room.members.map((member) => ({
+            ...member,
+            user: patchUser(member.user),
+          })),
+        }));
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["rooms"] });
+    };
+
     // ── Room events ─────────────────────────────────────────────────────
     const handleRoomMemberJoined = (data: { chatId: string }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.chats.room() });
@@ -248,7 +295,7 @@ export default function SocketProvider({
             // Ideally navigate to video call tab and select this chat.
             // For now, just set active chat.
             useChatUIStore.getState().setActiveChatId(data.chatId);
-            useChatUIStore.getState().setActiveTab("chats"); // Or whichever tab makes sense
+            useChatUIStore.getState().setActiveTab("personal"); // Or whichever tab makes sense
           },
         },
         duration: 10000,
@@ -263,6 +310,7 @@ export default function SocketProvider({
     socket.on("new-message", handleNewMessage);
     socket.on("chat-updated", handleChatUpdated);
     socket.on("user-presence-changed", handlePresenceChanged);
+    socket.on("user-profile-updated", handleProfileUpdated);
     socket.on("room-member-joined", handleRoomMemberJoined);
     socket.on("room-member-left", handleRoomMemberLeft);
     socket.on("room-invite-received", handleRoomInviteReceived);
@@ -276,6 +324,7 @@ export default function SocketProvider({
       socket.off("new-message", handleNewMessage);
       socket.off("chat-updated", handleChatUpdated);
       socket.off("user-presence-changed", handlePresenceChanged);
+      socket.off("user-profile-updated", handleProfileUpdated);
       socket.off("room-member-joined", handleRoomMemberJoined);
       socket.off("room-member-left", handleRoomMemberLeft);
       socket.off("room-invite-received", handleRoomInviteReceived);

@@ -4,6 +4,7 @@ const SOCKET_NOTIFY_URL =
 type NotifyOptions = {
   userIds?: string[];
   chatId?: string;
+  broadcast?: boolean;
 };
 
 /** Best-effort notify to the standalone socket server (non-blocking for API handlers). */
@@ -21,6 +22,7 @@ export async function notifySocket(
         payload,
         userIds: options.userIds,
         chatId: options.chatId,
+        broadcast: options.broadcast,
       }),
     });
   } catch (error) {

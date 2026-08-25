@@ -22,6 +22,14 @@ interface CallRoomViewProps {
   onLeave: () => void;
 }
 
+// Each mount of CallRoomInner creates its own HMSRoomProvider/SDK instance
+// (see the default export below), and the previous instance's leave() on
+// unmount is fire-and-forget. Without this, a quick leave->rejoin can call
+// join() (and getUserMedia) before the old instance has actually released
+// the camera, surfacing as a DeviceInUse (3003) error from the SDK. Track
+// the in-flight leave() across mounts so the next join() waits for it.
+let pendingLeave: Promise<void> | null = null;
+
 function PeerTile({ peer }: { peer: HMSPeer }) {
   const { videoRef } = useVideo({ trackId: peer.videoTrack });
 
@@ -49,28 +57,40 @@ function CallRoomInner({ sessionId, token, userName, isStarter, onLeave }: CallR
     if (hasJoinedRef.current) return;
     hasJoinedRef.current = true;
 
-    hmsActions
-      .join({ userName, authToken: token })
-      .catch((error) => {
+    let cancelled = false;
+
+    (async () => {
+      if (pendingLeave) {
+        await pendingLeave;
+      }
+      if (cancelled) return;
+
+      try {
+        await hmsActions.join({ userName, authToken: token });
+      } catch (error) {
         console.error("Failed to join call:", error);
         setJoinError("Could not join the call. Please try again.");
-      });
+      }
+    })();
 
     return () => {
-      hmsActions.leave().catch(() => {});
+      cancelled = true;
+      pendingLeave = hmsActions.leave().catch(() => {});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleLeave = async () => {
-    await hmsActions.leave().catch(() => {});
+    pendingLeave = hmsActions.leave().catch(() => {});
+    await pendingLeave;
     onLeave();
   };
 
   const handleEndCall = () => {
     endCallMutation(sessionId, {
       onSettled: async () => {
-        await hmsActions.leave().catch(() => {});
+        pendingLeave = hmsActions.leave().catch(() => {});
+        await pendingLeave;
         onLeave();
       },
     });
@@ -110,7 +130,7 @@ function CallRoomInner({ sessionId, token, userName, isStarter, onLeave }: CallR
           onClick={toggleAudio}
           disabled={!toggleAudio}
           title={isLocalAudioEnabled ? "Mute" : "Unmute"}
-          className="p-3 rounded-full bg-white/10 text-white hover:bg-white/20 transition disabled:opacity-50"
+          className="p-3 rounded-full bg-white/10 text-white hover:bg-white/20 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLocalAudioEnabled ? <Mic size={18} /> : <MicOff size={18} />}
         </button>
@@ -120,7 +140,7 @@ function CallRoomInner({ sessionId, token, userName, isStarter, onLeave }: CallR
           onClick={toggleVideo}
           disabled={!toggleVideo}
           title={isLocalVideoEnabled ? "Turn camera off" : "Turn camera on"}
-          className="p-3 rounded-full bg-white/10 text-white hover:bg-white/20 transition disabled:opacity-50"
+          className="p-3 rounded-full bg-white/10 text-white hover:bg-white/20 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLocalVideoEnabled ? <Video size={18} /> : <VideoOff size={18} />}
         </button>
@@ -129,7 +149,7 @@ function CallRoomInner({ sessionId, token, userName, isStarter, onLeave }: CallR
           type="button"
           onClick={handleLeave}
           title="Leave call"
-          className="p-3 rounded-full bg-white/10 text-white hover:bg-white/20 transition flex items-center gap-2 px-4"
+          className="p-3 rounded-full bg-white/10 text-white hover:bg-white/20 transition flex items-center gap-2 px-4 cursor-pointer"
         >
           <LogOut size={18} />
           <span className="text-sm">Leave</span>
@@ -141,7 +161,7 @@ function CallRoomInner({ sessionId, token, userName, isStarter, onLeave }: CallR
             onClick={handleEndCall}
             disabled={isEnding}
             title="End call for everyone"
-            className="p-3 rounded-full bg-error text-on-primary hover:opacity-90 transition flex items-center gap-2 px-4 disabled:opacity-50"
+            className="p-3 rounded-full bg-error text-on-primary hover:opacity-90 transition flex items-center gap-2 px-4 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <PhoneOff size={18} />
             <span className="text-sm">{isEnding ? "Ending..." : "End Call"}</span>
