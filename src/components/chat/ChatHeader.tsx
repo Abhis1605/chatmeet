@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Users, Video } from "lucide-react";
 import { startCall } from "@/services/call.service";
 import { toast } from "sonner";
+import { getAvatarSrc } from "@/lib/avatars";
 
 interface ChatHeaderProps {
   otherUser: any;
@@ -45,11 +46,20 @@ export default function ChatHeader({
   return (
     <div className="h-18 px-5 border-b border-border flex items-center gap-3 bg-surface">
 
-      <img
-        src={chat?.isGroup ? "/chatmeet-collapsed-logo.png" : otherUser?.image || "/default-avatar.png"}
-        alt="avatar"
-        className="w-11 h-11 rounded-full object-cover"
-      />
+      <div className="relative shrink-0">
+        <img
+          src={chat?.isGroup ? chat.image || "/chatmeet-collapsed-logo.png" : getAvatarSrc(otherUser)}
+          alt="avatar"
+          className="w-11 h-11 rounded-full object-cover"
+        />
+        {!chat?.isGroup && (
+          <span
+            className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-surface ${
+              otherUser?.isOnline ? "bg-green-500" : "bg-muted"
+            }`}
+          />
+        )}
+      </div>
 
       <div className="flex flex-col flex-1 min-w-0">
         <h3 className="text-foreground font-semibold">
@@ -57,10 +67,13 @@ export default function ChatHeader({
         </h3>
 
         <span
-          className={`text-xs transition ${!chat?.isGroup && isTyping
+          className={`text-xs transition ${
+            !chat?.isGroup && isTyping
               ? "text-green-400 animate-pulse"
-              : "text-muted"
-            }`}
+              : !chat?.isGroup && otherUser?.isOnline
+                ? "text-green-500"
+                : "text-muted"
+          }`}
         >
           {subtitle}
         </span>
@@ -76,7 +89,7 @@ export default function ChatHeader({
             aria-label="Start group video call"
             onClick={handleGroupVideoCall}
             disabled={isStartingCall}
-            className="p-2 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-2 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Video className="w-5 h-5" />
           </button>
@@ -86,7 +99,7 @@ export default function ChatHeader({
             title="Manage group"
             aria-label="Manage group"
             onClick={onManageGroup}
-            className="p-2 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition"
+            className="p-2 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition cursor-pointer"
           >
             <Users className="w-5 h-5" />
           </button>

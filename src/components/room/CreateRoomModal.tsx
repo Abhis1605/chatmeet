@@ -51,7 +51,7 @@ export default function CreateRoomModal({ open, onClose }: CreateRoomModalProps)
             title="Close"
             aria-label="Close"
             onClick={onClose}
-            className="p-1 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition"
+            className="p-1 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>

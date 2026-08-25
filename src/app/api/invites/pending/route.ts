@@ -18,7 +18,16 @@ export async function GET() {
       },
       include: {
         chat: { select: { id: true, name: true } },
-        invitedBy: { select: { id: true, name: true, image: true, email: true } },
+        invitedBy: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+            profilePhotoType: true,
+            avatarFilename: true,
+            email: true,
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
     });

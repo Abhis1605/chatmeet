@@ -15,6 +15,10 @@ export const queryKeys = {
   users: {
     search: (q: string) => ["users", "search", q] as const,
   },
+  // ── Profile query keys (new) ──────────────────────────────────────
+  profile: {
+    me: ["profile", "me"] as const,
+  },
   // ── Room-specific query keys (new) ────────────────────────────────
   rooms: {
     members: (chatId: string) => ["rooms", chatId, "members"] as const,
@@ -26,6 +30,13 @@ export const queryKeys = {
   calls: {
     active: (chatId: string) => ["calls", "active", chatId] as const,
     history: ["calls", "history"] as const,
+  },
+  // ── Settings query keys (new) ─────────────────────────────────────
+  settings: {
+    me: ["settings", "me"] as const,
+  },
+  blockedUsers: {
+    all: ["blockedUsers", "all"] as const,
   },
 } as const;
 

@@ -2,6 +2,7 @@
 
 import { usePendingInvites } from "@/hooks/queries/use-pending-invites";
 import { useRespondInvite } from "@/hooks/mutations/use-respond-invite";
+import { getAvatarSrc } from "@/lib/avatars";
 
 export default function PendingInvitesList() {
   const { data: invites = [], isLoading } = usePendingInvites();
@@ -26,7 +27,7 @@ export default function PendingInvitesList() {
           className="px-3 py-3 border-t border-white/5 flex items-center gap-3"
         >
           <img
-            src={invite.invitedBy.image || "/default-avatar.png"}
+            src={getAvatarSrc(invite.invitedBy)}
             alt="avatar"
             className="w-9 h-9 rounded-full object-cover"
           />
@@ -47,7 +48,7 @@ export default function PendingInvitesList() {
                   chatId: invite.chatId,
                 })
               }
-              className="px-2 py-1 text-xs rounded bg-primary text-on-primary hover:bg-primary-hover disabled:opacity-60"
+              className="px-2 py-1 text-xs rounded bg-primary text-on-primary hover:bg-primary-hover cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
               Accept
             </button>
@@ -57,7 +58,7 @@ export default function PendingInvitesList() {
               onClick={() =>
                 respond({ inviteId: invite.id, action: "reject", chatId: invite.chatId })
               }
-              className="px-2 py-1 text-xs rounded bg-surface-soft text-muted hover:bg-border disabled:opacity-60"
+              className="px-2 py-1 text-xs rounded bg-surface-soft text-muted hover:bg-border cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
               Decline
             </button>

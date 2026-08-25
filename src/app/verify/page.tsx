@@ -97,7 +97,7 @@ function VerifyPageContent() {
             <button
               onClick={handleResend}
               disabled={isResending}
-              className="text-primary disabled:opacity-50"
+              className="text-primary cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isResending ? "Sending..." : "Resend Code"}
             </button>

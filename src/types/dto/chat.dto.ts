@@ -26,6 +26,7 @@ export interface ChatLastMessage {
 export interface ChatDto {
   id: string;
   name: string | null;
+  image: string | null;
   isGroup: boolean;
   unreadCount?: number;
   members: ChatMemberDto[];
@@ -62,4 +63,10 @@ export interface UpdateGroupMemberRequest {
 // /api/group/:chatId DELETE response
 export interface DeleteGroupResponse {
   success: boolean;
+}
+
+// /api/group/:chatId and /api/room/:chatId PATCH request body
+export interface UpdateChatDetailsRequest {
+  name?: string;
+  image?: string;
 }

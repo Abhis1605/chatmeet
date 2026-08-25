@@ -52,7 +52,7 @@ export default function RoomCodeShareSheet({
             title="Close"
             aria-label="Close"
             onClick={onClose}
-            className="p-1 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition"
+            className="p-1 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -101,7 +101,7 @@ export default function RoomCodeShareSheet({
                   regenerate(room.id);
                   showInfo("Generating a new room code...");
                 }}
-                className="w-full rounded-lg border border-border bg-surface-soft px-4 py-2.5 text-sm text-foreground hover:bg-surface-soft/70 disabled:opacity-60 flex items-center justify-center gap-2"
+                className="w-full rounded-lg border border-border bg-surface-soft px-4 py-2.5 text-sm text-foreground hover:bg-surface-soft/70 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 <RefreshCw className="w-4 h-4" />
                 {regenerating ? "Regenerating..." : "Regenerate Code"}

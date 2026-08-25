@@ -32,6 +32,25 @@ model User {
   isOnline Boolean   @default(false)
   lastSeen DateTime?
 
+  // ── Profile (additive) ────────────────────────────────────────────
+  username         String?          @unique
+  bio              String?
+  profilePhotoType ProfilePhotoType @default(PHOTO)
+  avatarFilename   String?
+  statusPreference StatusPreference @default(ONLINE)
+  showLastSeen     Boolean          @default(true)
+  showOnlineStatus Boolean          @default(true)
+
+  // ── Settings (additive) ───────────────────────────────────────────
+  theme               ThemePreference @default(SYSTEM)
+  enterToSend         Boolean         @default(true)
+  readReceiptsEnabled Boolean         @default(true)
+  showTypingIndicator Boolean         @default(true)
+  notificationSound   Boolean         @default(true)
+  notificationToast   Boolean         @default(true)
+  notificationsMuted  Boolean         @default(false)
+  deletedAt           DateTime?
+
   messages Message[]
   chats    ChatMember[]
 
@@ -40,15 +59,33 @@ model User {
   receivedInvites RoomInvite[] @relation("ReceivedInvites")
 
   // ── Video call relations (additive) ──────────────────────────────
-  startedCalls CallSession[]
+  startedCalls       CallSession[]
+  callParticipations CallParticipant[]
+
+  // ── Blocked users (additive) ──────────────────────────────────────
+  blockedUsers BlockedUser[] @relation("Blocker")
+  blockedBy    BlockedUser[] @relation("Blocked")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
+// ── Blocked users (additive) ────────────────────────────────────────
+model BlockedUser {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  blocker   User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+}
+
 model Chat {
   id      String  @id @default(cuid())
   name    String?
+  image   String?
   isGroup Boolean @default(false)
 
   // ── Room fields (additive) ────────────────────────────────────────
@@ -127,7 +164,27 @@ model CallSession {
   startedAt   DateTime  @default(now())
   endedAt     DateTime?
 
+  // ── Call history / participants (additive) ───────────────────────
+  type         String            @default("ONE_TO_ONE")
+  participants CallParticipant[]
+
   @@index([chatId, status])
+  @@index([startedAt, id])
+}
+
+// ── Call Participant (additive) ─────────────────────────────────────
+model CallParticipant {
+  id            String      @id @default(cuid())
+  callSessionId String
+  callSession   CallSession @relation(fields: [callSessionId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  status        String      @default("INVITED")
+  joinedAt      DateTime?
+  leftAt        DateTime?
+
+  @@unique([callSessionId, userId])
+  @@index([userId, status])
 }
 
 // ── Room Invite ────────────────────────────────────────────────────
@@ -150,4 +207,24 @@ enum InviteStatus {
   PENDING
   ACCEPTED
   REJECTED
+}
+
+// ── Profile (additive) ─────────────────────────────────────────────
+enum ProfilePhotoType {
+  PHOTO
+  AVATAR
+}
+
+enum StatusPreference {
+  ONLINE
+  AWAY
+  DND
+  INVISIBLE
+}
+
+// ── Settings (additive) ─────────────────────────────────────────────
+enum ThemePreference {
+  LIGHT
+  DARK
+  SYSTEM
 }

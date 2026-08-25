@@ -76,6 +76,8 @@ export async function GET(req: Request) {
                                 name: true,
                                 email: true,
                                 image: true,
+                                profilePhotoType: true,
+                                avatarFilename: true,
                             },
                         },
                     },

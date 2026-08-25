@@ -8,6 +8,7 @@ import GroupCreateModal from "./group/GroupCreateModal";
 import { Plus } from "lucide-react";
 import { useChats } from "@/hooks/queries/use-chats";
 import Spinner from "./Spinner";
+import { getAvatarSrc } from "@/lib/avatars";
 
 export default function ChatListPanel({ type }: any) {
   const { data: session } = useSession();
@@ -120,15 +121,24 @@ export default function ChatListPanel({ type }: any) {
                   }`}
               >
                 {/* Avatar */}
-                <img
-                  alt="avatar-img"
-                  src={
-                    chat.isGroup
-                      ? "/chatmeet-collapsed-logo.png"
-                      : otherUser?.image || "/default-avatar.png"
-                  }
-                  className="w-10 h-10 rounded-full object-cover"
-                />
+                <div className="relative shrink-0">
+                  <img
+                    alt="avatar-img"
+                    src={
+                      chat.isGroup
+                        ? chat.image || "/chatmeet-collapsed-logo.png"
+                        : getAvatarSrc(otherUser)
+                    }
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
+                  {!chat.isGroup && (
+                    <span
+                      className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-surface ${
+                        otherUser?.isOnline ? "bg-green-500" : "bg-muted"
+                      }`}
+                    />
+                  )}
+                </div>
 
                 {/* Info */}
                 <div className="flex-1 min-w-0 flex flex-col justify-center">

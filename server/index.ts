@@ -61,10 +61,14 @@ const emitToUsers = (userIds: string[], event: string, payload: unknown) => {
 }
 
 app.post('/notify', (req, res) => {
-    const { event, payload, userIds, chatId } = req.body ?? {}
+    const { event, payload, userIds, chatId, broadcast } = req.body ?? {}
 
     if (!event) {
         return res.status(400).json({ error: 'event is required' })
+    }
+
+    if (broadcast) {
+        io.emit(event, payload)
     }
 
     if (Array.isArray(userIds) && userIds.length > 0) {

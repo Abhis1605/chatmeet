@@ -4,6 +4,8 @@ export interface UserSearchResult {
   name: string | null;
   email: string;
   image: string | null;
+  profilePhotoType: string | null;
+  avatarFilename: string | null;
   isOnline: boolean;
   lastSeen: string | null;
 }
@@ -14,6 +16,8 @@ export interface UserDto {
   name: string | null;
   email: string;
   image: string | null;
+  profilePhotoType: string | null;
+  avatarFilename: string | null;
   isOnline: boolean;
   lastSeen: string | null;
   provider: string;
