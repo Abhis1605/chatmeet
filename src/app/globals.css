@@ -21,6 +21,12 @@
   --font-heading: var(--font-dm-sans), "DM Sans", sans-serif;
   --font-body: var(--font-inter), "Inter", sans-serif;
   --font-mono: var(--font-plex-mono), "IBM Plex Mono", monospace;
+
+  /* Hero glow colors: darker/richer in light mode so the glow reads
+     against a light background instead of washing out. */
+  --hero-glow-1: #16281f;
+  --hero-glow-2: #1d3a2e;
+  --hero-glow-3: #284a3d;
 }
 
 .dark {
@@ -38,6 +44,10 @@
 
   --error: #ffb4ab;
   --error-soft: #4c0000;
+
+  --hero-glow-1: #7faf9b;
+  --hero-glow-2: #91bfad;
+  --hero-glow-3: #263a31;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -56,6 +66,10 @@
 
     --error: #ffb4ab;
     --error-soft: #4c0000;
+
+    --hero-glow-1: #7faf9b;
+    --hero-glow-2: #91bfad;
+    --hero-glow-3: #263a31;
   }
 }
 
@@ -115,6 +129,202 @@ h1, h2, h3, h4, h5, h6 {
 
 .btn-primary:disabled {
   cursor: not-allowed;
+}
+
+.btn-secondary {
+  background-color: var(--surface);
+  color: var(--foreground);
+  font-weight: 500;
+  border-radius: var(--radius-lg);
+  padding: 0.625rem 1.25rem;
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--primary-soft);
+  color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.08);
+}
+
+.btn-secondary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-secondary:disabled {
+  cursor: not-allowed;
+}
+
+/* ── Hero spotlight background (NestJS-style glow) ───────────────────── */
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -10;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--background);
+}
+
+.hero-blob {
+  position: absolute;
+  border-radius: 9999px;
+  will-change: transform, translate, opacity;
+  animation: hero-blob-drift 11s ease-in-out infinite;
+}
+
+/* Main spotlight: large, bright, centered high in the section — the
+   dominant glow the rest of the layout sits inside of. */
+.hero-blob-1 {
+  top: -35%;
+  left: 50%;
+  --hero-base-x: -50%;
+  --hero-base-y: 0%;
+  translate: var(--hero-base-x) var(--hero-base-y);
+  width: 90vw;
+  height: 70vw;
+  max-width: 1100px;
+  max-height: 850px;
+  background: radial-gradient(ellipse at 50% 30%, var(--hero-glow-1) 0%, var(--hero-glow-1) 18%, transparent 65%);
+  filter: blur(60px);
+  --hero-blob-opacity: 0.42;
+  opacity: var(--hero-blob-opacity);
+  animation-duration: 12s;
+}
+
+/* Secondary glow: smaller, offset, adds depth/color variation beneath. */
+.hero-blob-2 {
+  top: -10%;
+  left: 65%;
+  --hero-base-x: 0%;
+  --hero-base-y: 0%;
+  translate: var(--hero-base-x) var(--hero-base-y);
+  width: 45vw;
+  height: 45vw;
+  max-width: 620px;
+  max-height: 620px;
+  background: radial-gradient(circle, var(--hero-glow-2) 0%, transparent 70%);
+  filter: blur(90px);
+  --hero-blob-opacity: 0.32;
+  opacity: var(--hero-blob-opacity);
+  animation-duration: 15s;
+  animation-delay: -5s;
+}
+
+.hero-blob-3 {
+  top: 0%;
+  left: 30%;
+  --hero-base-x: 0%;
+  --hero-base-y: 0%;
+  translate: var(--hero-base-x) var(--hero-base-y);
+  width: 40vw;
+  height: 40vw;
+  max-width: 520px;
+  max-height: 520px;
+  background: radial-gradient(circle, var(--hero-glow-3) 0%, transparent 70%);
+  filter: blur(90px);
+  --hero-blob-opacity: 0.28;
+  opacity: var(--hero-blob-opacity);
+  animation-duration: 18s;
+  animation-delay: -8s;
+}
+
+.dark .hero-blob-1,
+:root:not(.light) .hero-blob-1 {
+  --hero-blob-opacity: 0.5;
+}
+.dark .hero-blob-2,
+:root:not(.light) .hero-blob-2 {
+  --hero-blob-opacity: 0.35;
+}
+.dark .hero-blob-3,
+:root:not(.light) .hero-blob-3 {
+  --hero-blob-opacity: 0.3;
+}
+
+/* Mobile: vw-based sizing collapses to a thin band on tall, narrow
+   viewports, so switch to vh-based sizing, spread the blobs down the
+   full screen, and cut the blur so color survives at smaller sizes. */
+@media (max-width: 640px) {
+  .hero-blob-1 {
+    top: -10%;
+    left: 50%;
+    width: 180vw;
+    height: 46vh;
+    max-width: none;
+    max-height: none;
+    filter: blur(38px);
+    --hero-blob-opacity: 0.5;
+  }
+
+  .hero-blob-2 {
+    top: 26%;
+    left: 60%;
+    width: 130vw;
+    height: 32vh;
+    max-width: none;
+    max-height: none;
+    filter: blur(48px);
+    --hero-blob-opacity: 0.4;
+  }
+
+  .hero-blob-3 {
+    top: 58%;
+    left: 30%;
+    width: 130vw;
+    height: 32vh;
+    max-width: none;
+    max-height: none;
+    filter: blur(48px);
+    --hero-blob-opacity: 0.36;
+  }
+
+  .dark .hero-blob-1,
+  :root:not(.light) .hero-blob-1 {
+    --hero-blob-opacity: 0.6;
+  }
+  .dark .hero-blob-2,
+  :root:not(.light) .hero-blob-2 {
+    --hero-blob-opacity: 0.46;
+  }
+  .dark .hero-blob-3,
+  :root:not(.light) .hero-blob-3 {
+    --hero-blob-opacity: 0.42;
+  }
+}
+
+/* Idle drift: moves on `translate` (not `transform`) so it composes
+   cleanly with motion's x/y cursor-parallax, which animates `transform`
+   on the same elements — the two never fight over the same property. */
+@keyframes hero-blob-drift {
+  0%, 100% {
+    translate: var(--hero-base-x, 0%) var(--hero-base-y, 0%);
+    scale: 1;
+    opacity: var(--hero-blob-opacity, 0.35);
+  }
+  25% {
+    translate: calc(var(--hero-base-x, 0%) + 10%) calc(var(--hero-base-y, 0%) + 8%);
+    scale: 1.12;
+    opacity: calc(var(--hero-blob-opacity, 0.35) * 0.9);
+  }
+  50% {
+    translate: calc(var(--hero-base-x, 0%) - 6%) calc(var(--hero-base-y, 0%) + 12%);
+    scale: 0.94;
+    opacity: var(--hero-blob-opacity, 0.35);
+  }
+  75% {
+    translate: calc(var(--hero-base-x, 0%) - 10%) calc(var(--hero-base-y, 0%) - 8%);
+    scale: 1.08;
+    opacity: calc(var(--hero-blob-opacity, 0.35) * 0.92);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-blob {
+    animation: none;
+  }
 }
 
 *::-webkit-scrollbar {

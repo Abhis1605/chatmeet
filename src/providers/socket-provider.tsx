@@ -318,7 +318,19 @@ export default function SocketProvider({
     socket.on("call-incoming", handleCallIncoming);
     socket.on("call-ended", handleCallEnded);
 
+    // ── Tell the server we're gone before the tab actually closes ───────
+    // Relying only on the transport close to reach the server is not
+    // reliable (especially in incognito windows, which tear the network
+    // stack down abruptly), so proactively disconnect on unload as well.
+    const handleUnload = () => {
+      socket.disconnect();
+    };
+    window.addEventListener("pagehide", handleUnload);
+    window.addEventListener("beforeunload", handleUnload);
+
     return () => {
+      window.removeEventListener("pagehide", handleUnload);
+      window.removeEventListener("beforeunload", handleUnload);
       socket.off("connect");
       socket.off("disconnect");
       socket.off("new-message", handleNewMessage);

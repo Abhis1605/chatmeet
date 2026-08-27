@@ -116,9 +116,25 @@ function CallRoomInner({ sessionId, token, userName, isStarter, onLeave }: CallR
     );
   }
 
+  const peerCount = peers.length;
+  // Grid columns scale with participant count so tiles grow/shrink to fill
+  // the available space instead of staying pinned to a fixed 2-col layout.
+  const gridColsClass =
+    peerCount <= 1
+      ? "grid-cols-1"
+      : peerCount === 2
+      ? "grid-cols-1 sm:grid-cols-2"
+      : peerCount <= 4
+      ? "grid-cols-2"
+      : peerCount <= 9
+      ? "grid-cols-2 sm:grid-cols-3"
+      : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4";
+
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div
+        className={`flex-1 overflow-y-auto p-4 grid ${gridColsClass} auto-rows-fr gap-3 place-content-center`}
+      >
         {peers.map((peer) => (
           <PeerTile key={peer.id} peer={peer} />
         ))}
