@@ -1,8 +1,11 @@
+import Navbar from "@/components/landing/Navbar";
+import Hero from "@/components/landing/Hero";
 
 export default function Home() {
   return (
-    <div>
-      App
-    </div>
+    <main className="min-h-screen relative">
+      <Navbar />
+      <Hero />
+    </main>
   );
 }
