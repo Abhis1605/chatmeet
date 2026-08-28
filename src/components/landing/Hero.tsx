@@ -4,6 +4,7 @@ import { motion, useMotionValue, useSpring, useTransform, useReducedMotion } fro
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useEffect } from "react";
+import FeatureMarquee from "./FeatureMarquee";
 
 // Each blob gets its own depth multiplier for a subtle parallax spread.
 const BLOB_DEPTH = {
@@ -42,7 +43,7 @@ export default function Hero() {
   }, [prefersReducedMotion, cursorX, cursorY]);
 
   return (
-    <section className="relative h-screen flex flex-col justify-center items-center text-center px-4 overflow-hidden pt-20">
+    <section className="relative  pb-32 min-h-screen lg:pb-0 flex flex-col justify-center items-center text-center px-4 overflow-hidden pt-20">
 
       {/* Animated blob-gradient background */}
       <div className="hero-bg">
@@ -91,6 +92,10 @@ export default function Hero() {
           </Link>
         </motion.div>
       </motion.div>
+
+      <div className="absolute bottom-0 left-0 w-full">
+        <FeatureMarquee />
+      </div>
     </section>
   );
 }
