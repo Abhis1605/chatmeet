@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useCallback, useState } from "react";
-import { useReducedMotion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import {
   MessageSquare,
   FolderOpen,
@@ -118,7 +118,13 @@ export default function FeatureMarquee() {
   const handleMouseLeave = useCallback(() => setIsPaused(false), []);
 
   return (
-    <section aria-label="Feature highlights" className="py-10">
+    <motion.section
+      aria-label="Feature highlights"
+      initial={prefersReducedMotion ? false : { opacity: 0, y: 24 }}
+      animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
+      transition={{ duration: 0.7, delay: 0.45, ease: "easeOut" }}
+      className="py-10"
+    >
       <div
         className="relative overflow-hidden"
         onMouseEnter={handleMouseEnter}
@@ -142,6 +148,6 @@ export default function FeatureMarquee() {
           </div>
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }

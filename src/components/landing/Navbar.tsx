@@ -7,7 +7,8 @@ import { Menu, X, Sun, Moon } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 const NAV_LINKS = [
-  { label: "Features", href: "#features" },
+  { label: "Problems", href: "#problems" },
+  {label: "Features", href: "#features"},
   { label: "How it works", href: "#how-it-works" },
   { label: "Pricing", href: "#pricing" },
 ];
@@ -15,6 +16,7 @@ const NAV_LINKS = [
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
     // Check initial theme
@@ -29,6 +31,14 @@ export default function Navbar() {
       document.documentElement.classList.remove("dark");
       document.documentElement.classList.add("light");
     }
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 0);
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const toggleTheme = () => {
@@ -46,8 +56,8 @@ export default function Navbar() {
   };
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 flex justify-center p-4">
-      <nav className="w-full max-w-5xl bg-(--surface)/80 backdrop-blur-md border border-border rounded-full px-3 py-2 flex items-center justify-between shadow-sm">
+    <div className="fixed top-0 left-0 right-0 z-500 flex justify-center p-4">
+      <nav className={`w-full ${isScrolled ? "max-w-5xl" : "max-w-7xl"} transition-[max-width] duration-300 ease-out bg-(--surface)/80 backdrop-blur-md border border-border rounded-full px-3 py-2 flex items-center justify-between shadow-sm`}>
         {/* Logo */}
         <Link href="/" className="flex items-center group">
           <Image
