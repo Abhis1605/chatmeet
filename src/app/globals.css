@@ -4,6 +4,7 @@
   --background: #f7f6f2;
   --surface: #ffffff;
   --surface-soft: #eeeee9;
+  --card: #151b18;
   --foreground: #20221f;
   --muted: #6c706a;
   --border: #e3e1da;
@@ -33,6 +34,7 @@
   --background: #171916;
   --surface: #1e211e;
   --surface-soft: #263a31;
+  --card: #1d211d;
   --foreground: #e9ebe5;
   --muted: #a6aaa2;
   --border: #30352f;
@@ -55,6 +57,7 @@
     --background: #171916;
     --surface: #1e211e;
     --surface-soft: #263a31;
+    --card: #1d211d;
     --foreground: #e9ebe5;
     --muted: #a6aaa2;
     --border: #30352f;
@@ -77,6 +80,7 @@
   --color-background: var(--background);
   --color-surface: var(--surface);
   --color-surface-soft: var(--surface-soft);
+  --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-border: var(--border);
