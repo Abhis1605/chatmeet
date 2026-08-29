@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "motion/react";
 const NAV_LINKS = [
   { label: "Problems", href: "#problems" },
   {label: "Features", href: "#features"},
+  {label: "Spaces", href: "#rooms-group-section"},
   { label: "How it works", href: "#how-it-works" },
   { label: "Pricing", href: "#pricing" },
 ];
