@@ -37,8 +37,8 @@ const FEATURES: FeatureCardData[] = [
     icon: Code2,
   },
   {
-    title: "Video & Voice Calls",
-    description: "Jump from chat to call without losing context, history, or momentum.",
+    title: "Video Calls",
+    description: "Jump from chat to video call without losing context, history, or momentum.",
     icon: Video,
   },
   {
@@ -78,7 +78,7 @@ function CardFace({
   return (
     <div
       className={[
-        "relative flex h-full w-full flex-col overflow-hidden rounded-[24px] border border-white/[0.08] bg-[#0b0c0d] shadow-[0_22px_70px_rgba(0,0,0,0.38)]",
+        "relative flex h-full w-full flex-col overflow-hidden rounded-3xl border border-white/8 bg-[#0b0c0d] shadow-[0_22px_70px_rgba(0,0,0,0.38)]",
         "bg-[linear-gradient(180deg,rgba(255,255,255,0.05),transparent_45%)]",
         "before:absolute before:inset-0 before:bg-[repeating-linear-gradient(to_bottom,rgba(255,255,255,0.025)_0,rgba(255,255,255,0.025)_1px,transparent_1px,transparent_22px),repeating-linear-gradient(to_right,rgba(255,255,255,0.025)_0,rgba(255,255,255,0.025)_1px,transparent_1px,transparent_22px)] before:content-['']",
         className,
@@ -90,7 +90,7 @@ function CardFace({
       <div className="relative z-10 flex h-full flex-col items-center justify-center px-5 text-center">
         <div
           className={[
-            "mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-[#cfeae0] shadow-sm",
+            "mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/4 text-[#cfeae0] shadow-sm",
             iconClassName,
           ].join(" ")}
         >
@@ -162,7 +162,7 @@ export default function FanFeatureDeck() {
         className="hidden md:flex"
         onMouseLeave={() => setHovered(null)}
       >
-        <div className="mx-auto flex h-[340px] w-full max-w-[900px] items-end justify-center overflow-visible sm:h-[380px] md:h-[420px]">
+        <div className="mx-auto flex h-85 w-full max-w-225 items-end justify-center overflow-visible sm:h-95 md:h-105">
           {FEATURES.map((feature, index) => {
             const baseRotate = (index - mid) * 6;
             const baseY = Math.abs(index - mid) * 14;
@@ -194,7 +194,7 @@ export default function FanFeatureDeck() {
                 initial={false}
                 animate={animate}
                 transition={transition}
-                className="relative shrink-0 overflow-hidden rounded-[24px]"
+                className="relative shrink-0 overflow-hidden rounded-3xl"
                 style={{
                   width: "240px",
                   height: "320px",
@@ -217,7 +217,7 @@ export default function FanFeatureDeck() {
       </div>
 
       <div className="flex flex-col items-center md:hidden">
-        <div className="relative flex h-[310px] w-[300px] items-center justify-center overflow-hidden sm:w-[320px]">
+        <div className="relative flex h-77.5 w-75 items-center justify-center overflow-hidden sm:w-[320px]">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentFeature.title}
@@ -239,7 +239,7 @@ export default function FanFeatureDeck() {
                     }
               }
               transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="h-[290px] w-[300px] sm:w-[320px]"
+              className="h-72.5 w-75 sm:w-[320px]"
             >
               <CardFace
                 feature={currentFeature}
@@ -264,12 +264,12 @@ export default function FanFeatureDeck() {
               }
               goToIndex(mobileIndex === 0 ? FEATURES.length - 1 : mobileIndex - 1, -1);
             }}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/90 transition hover:bg-white/[0.08]"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/4 text-white/90 transition hover:bg-white/8"
           >
             <span aria-hidden="true">‹</span>
           </button>
 
-          <span className="min-w-[58px] text-center text-sm text-white/70">
+          <span className="min-w-14.5 text-center text-sm text-white/70">
             {mobileIndex + 1} / {FEATURES.length}
           </span>
 
@@ -277,7 +277,7 @@ export default function FanFeatureDeck() {
             type="button"
             aria-label="Next feature"
             onClick={() => goToIndex((mobileIndex + 1) % FEATURES.length, 1)}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/90 transition hover:bg-white/[0.08]"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/4 text-white/90 transition hover:bg-white/8"
           >
             <span aria-hidden="true">›</span>
           </button>
