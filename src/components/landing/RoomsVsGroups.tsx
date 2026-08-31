@@ -86,7 +86,7 @@ export default function RoomsVsGroups() {
       </div>
 
       <div className="mx-auto mt-14 max-w-7xl">
-        <div className="relative mx-auto grid max-w-[1200px] grid-cols-1 items-start gap-x-16 gap-y-12 md:grid-cols-2">
+        <div className="relative mx-auto grid max-w-300 grid-cols-1 items-start gap-x-16 gap-y-12 md:grid-cols-2">
           <motion.div
             {...revealProps}
             transition={prefersReducedMotion ? undefined : { duration: 0.6, ease, delay: 0.05 }}
@@ -107,6 +107,23 @@ export default function RoomsVsGroups() {
                 className="h-auto w-full"
               />
             </button>
+
+            <motion.div
+              {...revealProps}
+              transition={prefersReducedMotion ? undefined : { duration: 0.6, ease, delay: 0.18 }}
+              className="mt-4 max-w-100 md:mt-5"
+            >
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-primary">GROUPS</p>
+              <h3 className="mt-3 font-heading text-xl font-bold leading-tight tracking-tight text-foreground md:text-[2rem]">
+                Keep your people close.
+              </h3>
+              <p className="mt-3 text-sm leading-relaxed text-muted md:text-base">
+                Persistent spaces with Creator, Admin, and Member roles. Turn on announcement-only mode when updates matter more than chatter, and control exactly who can post.
+              </p>
+              <p className="mt-4 text-[0.69rem] leading-relaxed text-muted/80 md:text-[0.72rem]">
+                Creator · Admin · Member · Announcement-only
+              </p>
+            </motion.div>
           </motion.div>
 
           <motion.div
@@ -129,6 +146,23 @@ export default function RoomsVsGroups() {
                 className="h-auto w-full"
               />
             </button>
+
+            <motion.div
+              {...revealProps}
+              transition={prefersReducedMotion ? undefined : { duration: 0.65, ease, delay: 0.25 }}
+              className="mt-4 max-w-100 md:mt-5 md:ml-auto"
+            >
+              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-primary">ROOMS</p>
+              <h3 className="mt-3 font-heading text-xl font-bold leading-tight tracking-tight text-foreground md:text-[2rem]">
+                Open the door. Let people in.
+              </h3>
+              <p className="mt-3 text-sm leading-relaxed text-muted md:text-base">
+                Open, code-based spaces for up to 100 people. Share a code or send a direct email invite and let people join instantly. Owners can regenerate or deactivate the code anytime to close the door.
+              </p>
+              <p className="mt-4 text-[0.69rem] leading-relaxed text-muted/80 md:text-[0.72rem]">
+                Shareable code · Email invite · Up to 100 people
+              </p>
+            </motion.div>
           </motion.div>
 
           <motion.div

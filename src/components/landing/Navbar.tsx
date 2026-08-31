@@ -84,7 +84,7 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-4">
           <button 
             onClick={toggleTheme}
-            className="p-2 text-muted hover:text-foreground transition-colors rounded-full hover:bg-surface-soft"
+            className="p-2 text-muted cursor-pointer hover:text-foreground transition-colors rounded-full hover:bg-surface-soft"
             aria-label="Toggle theme"
           >
             {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
@@ -98,7 +98,7 @@ export default function Navbar() {
         <div className="flex md:hidden items-center gap-2">
           <button 
             onClick={toggleTheme}
-            className="p-2 text-muted hover:text-foreground transition-colors rounded-full"
+            className="p-2 text-muted cursor-pointer hover:text-foreground transition-colors rounded-full"
             aria-label="Toggle theme"
           >
             {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
