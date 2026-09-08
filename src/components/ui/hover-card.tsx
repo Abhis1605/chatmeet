@@ -6,9 +6,10 @@ import { cn } from "@/lib/cn";
 
 type HoverCardProps = HTMLAttributes<HTMLDivElement> & {
   active?: boolean;
+  autoGlow?: boolean;
 };
 
-export function HoverCard({ active = false, children, className, ...props }: HoverCardProps) {
+export function HoverCard({ active = false, autoGlow = false, children, className, ...props }: HoverCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [pointerPosition, setPointerPosition] = useState({ x: 0, y: 0 });
   const cardRef = useRef<HTMLDivElement>(null);
@@ -37,9 +38,9 @@ export function HoverCard({ active = false, children, className, ...props }: Hov
         aria-hidden="true"
         className="pointer-events-none absolute z-0 size-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,var(--primary),var(--primary-hover)_35%,transparent_70%)] blur-2xl"
         animate={{
-          left: pointerPosition.x,
-          top: pointerPosition.y,
-          opacity: isHovered && !prefersReducedMotion ? 0.8 : 0,
+          left: autoGlow && !isHovered ? "50%" : pointerPosition.x,
+          top: autoGlow && !isHovered ? "50%" : pointerPosition.y,
+          opacity: (isHovered || autoGlow) && !prefersReducedMotion ? 0.8 : 0,
         }}
         transition={{ duration: 0.2, ease: "easeOut" }}
       />

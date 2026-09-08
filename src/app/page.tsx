@@ -3,6 +3,8 @@ import Hero from "@/components/landing/Hero";
 import Problem from "@/components/landing/Problem";
 import FeaturesSection from "@/components/landing/FeaturesSection";
 import RoomsVsGroups from "@/components/landing/RoomsVsGroups";
+import SuccessStories from "@/components/landing/SuccessStories";
+import FAQSection from "@/components/landing/FAQSection";
 
 export default function Home() {
   return (
@@ -12,6 +14,8 @@ export default function Home() {
       <Problem />
       <FeaturesSection />
       <RoomsVsGroups />
+      <SuccessStories />
+      <FAQSection />
     </main>
   );
 }
