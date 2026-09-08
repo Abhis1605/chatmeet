@@ -2,6 +2,8 @@
 
 :root {
   --background: #f7f6f2;
+  --section-background: #efeee9;
+  --section-alt: #e8e7e1;
   --surface: #ffffff;
   --surface-soft: #eeeee9;
   --card: #151b18;
@@ -32,6 +34,8 @@
 
 .dark {
   --background: #171916;
+  --section-background: #1d201d;
+  --section-alt: #222620;
   --surface: #1e211e;
   --surface-soft: #263a31;
   --card: #1d211d;
@@ -55,6 +59,8 @@
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
     --background: #171916;
+    --section-background: #1d201d;
+    --section-alt: #222620;
     --surface: #1e211e;
     --surface-soft: #263a31;
     --card: #1d211d;
@@ -78,6 +84,8 @@
 
 @theme inline {
   --color-background: var(--background);
+  --color-section-background: var(--section-background);
+  --color-section-alt: var(--section-alt);
   --color-surface: var(--surface);
   --color-surface-soft: var(--surface-soft);
   --color-card: var(--card);
