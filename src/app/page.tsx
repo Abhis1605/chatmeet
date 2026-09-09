@@ -6,6 +6,7 @@ import RoomsVsGroups from "@/components/landing/RoomsVsGroups";
 import SuccessStories from "@/components/landing/SuccessStories";
 import FAQSection from "@/components/landing/FAQSection";
 import FinalCTA from "@/components/landing/FinalCTA";
+import Footer from "@/components/landing/Footer";
 
 export default function Home() {
   return (
@@ -18,6 +19,7 @@ export default function Home() {
       <SuccessStories />
       <FAQSection />
       <FinalCTA />
+      <Footer />
     </main>
   );
 }
