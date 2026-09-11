@@ -3,15 +3,16 @@
 import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Plus } from "lucide-react";
+import { Minus, Plus } from "lucide-react";
 import { useState } from "react";
 
 const FOOTER_COLUMNS = [
   {
     title: "Product",
     links: [
-        { label: "Problems", href: "#problems" },
+      { label: "Problems", href: "#problems" },
       { label: "Features", href: "#features" },
+      { label: "Spaces", href: "#rooms-group-section"},
       { label: "How it works", href: "#how-it-works" },
       { label: "Success stories", href: "#success-stories" },
     ],
@@ -20,8 +21,8 @@ const FOOTER_COLUMNS = [
     title: "Support",
     links: [
       { label: "FAQ", href: "#faq" },
-      { label: "Contact us", href: "#" },
-      { label: "Help center", href: "#" },
+      { label: "Contact us", href: "/contact" },
+      { label: "Help center", href: "/help-center" },
     ],
   },
   {
@@ -51,14 +52,15 @@ export default function Footer() {
       transition={{ duration: 0.6, ease: "easeOut" }}
       className="relative overflow-hidden bg-background px-4 pt-2 pb-0 leading-none md:px-8 md:pt-4 md:pb-0"
     >
-      <div className="relative z-10 mx-auto max-w-7xl">
+      <div className="mt-5 relative z-10 mx-auto max-w-7xl">
 
+        <div className="md:border-t border-border py-1 lg:py-8 md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(15rem,0.9fr)] md:gap-8 md:py-10">
         <motion.div
           initial={prefersReducedMotion ? false : "hidden"}
           whileInView={prefersReducedMotion ? undefined : "show"}
           viewport={{ once: true, amount: 0.2 }}
           transition={{ staggerChildren: 0.08 }}
-          className="mt-12 md:grid md:grid-cols-3 md:gap-8"
+          className="grid gap-0 md:col-span-3 md:grid-cols-3 md:gap-8"
         >
           {FOOTER_COLUMNS.map((column) => {
             const isOpen = openColumn === column.title;
@@ -78,11 +80,11 @@ export default function Footer() {
                   className="flex w-full items-center justify-between py-5 text-left md:pointer-events-none md:py-0"
                 >
                   <span className="text-base font-bold text-primary">{column.title}</span>
-                  <Plus
-                    aria-hidden="true"
-                    size={18}
-                    className={`text-muted transition-transform duration-200 md:hidden ${isOpen ? "rotate-45" : ""}`}
-                  />
+                  {isOpen ? (
+                    <Minus aria-hidden="true" size={18} className="text-muted md:hidden" />
+                  ) : (
+                    <Plus aria-hidden="true" size={18} className="text-muted md:hidden" />
+                  )}
                 </button>
 
                 <div id={`footer-${column.title.toLowerCase()}`} className="hidden md:block md:mt-5">
@@ -123,10 +125,10 @@ export default function Footer() {
           })}
         </motion.div>
 
-        <div className="mt-8 border-t border-border pt-8">
-          <p className="text-base font-bold text-primary">Follow</p>
-          <div className="mt-2 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-base text-muted">Connect with us on our social channels</p>
+        <div className="mt-8 border-border md:mt-0 md:border-l md:pl-8">
+          <p className="text-lg font-bold text-primary">Follow</p>
+          <div className="mt-4 space-y-5">
+            <p className="max-w-xs text-base leading-relaxed text-muted">Connect with us on our social channels</p>
             <motion.div
               initial={prefersReducedMotion ? false : "hidden"}
               whileInView={prefersReducedMotion ? undefined : "show"}
@@ -152,8 +154,9 @@ export default function Footer() {
             </motion.div>
           </div>
         </div>
+        </div>
 
-        <div className="mt-8 flex flex-col gap-2 border-t border-border pt-6 text-lg text-muted sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-2 flex flex-col gap-2 border-t border-border pt-6 text-lg text-muted sm:flex-row sm:items-center sm:justify-between">
           <p>© ChatMeet {new Date().getFullYear()}</p>
           <p>
             A weekend project turned real · by{" "}
