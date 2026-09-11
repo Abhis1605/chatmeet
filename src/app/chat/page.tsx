@@ -9,19 +9,29 @@ import VideoCallListPanel from "@/components/call/VideoCallListPanel";
 import VideoCallMainPanel from "@/components/call/VideoCallMainPanel";
 import ProfileMainPanel from "@/components/profile/ProfileMainPanel";
 import SettingsMainPanel from "@/components/settings/SettingsMainPanel";
+import Spinner from "@/components/Spinner";
 import { useChatUIStore } from "@/store/chat-ui-store";
 import { useSession } from "next-auth/react";
 import { useLogout } from "@/hooks/use-logout";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function ChatPage() {
   const { activeTab, activeChatId, activeRoomChatId } = useChatUIStore();
   const { status } = useSession();
   const { handleLogoutClick } = useLogout();
+  const router = useRouter();
 
-  if (status === "loading") {
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.replace(`/login?callbackUrl=${encodeURIComponent("/chat")}`);
+    }
+  }, [router, status]);
+
+  if (status !== "authenticated") {
     return (
-      <div className="h-screen flex items-center justify-center text-foreground">
-        Loading...
+      <div className="flex h-screen items-center justify-center bg-background text-foreground">
+        <Spinner />
       </div>
     );
   }
