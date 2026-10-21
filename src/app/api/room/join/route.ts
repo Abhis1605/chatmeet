@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { publicUserSelect } from "@/lib/public-user";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { notifySocket } from "@/lib/socket-notify";
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
     const result = await prisma.$transaction(async (tx) => {
       const room = await tx.chat.findUnique({
         where: { roomCode },
-        include: { members: { include: { user: true } } },
+        include: { members: { include: { user: { select: publicUserSelect } } } },
       });
 
       if (!room || !room.isRoom) {
@@ -49,12 +50,12 @@ export async function POST(req: Request) {
           role: "MEMBER",
           canSend: true,
         },
-        include: { user: true },
+        include: { user: { select: publicUserSelect } },
       });
 
       const fullRoom = await tx.chat.findUnique({
         where: { id: room.id },
-        include: { members: { include: { user: true } } },
+        include: { members: { include: { user: { select: publicUserSelect } } } },
       });
 
       return { room: fullRoom, member };

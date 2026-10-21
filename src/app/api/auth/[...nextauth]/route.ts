@@ -5,6 +5,7 @@ import Credentials from "next-auth/providers/credentials"
 import Github from "next-auth/providers/github"
 import Google from "next-auth/providers/google"
 import bcrypt from 'bcrypt'
+import jwt from 'jsonwebtoken'
 
 declare module "next-auth" {
     interface Session {
@@ -20,6 +21,10 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
     interface JWT {
         id: string
+        // When this login happened (ms). Compared to User.passwordChangedAt.
+        authTime?: number
+        // Set once the login is older than the last password change
+        revoked?: boolean
     }
 }
 
@@ -104,7 +109,11 @@ export const authOptions: NextAuthOptions = {
                 token.id = user.id
                 token.email = user.email
                 token.name = user.name
+                token.authTime = Date.now()
+                delete token.revoked
             }
+
+            if (token.revoked) return token
 
             // CRITICAL: Always ensure the token.id is the database CUID, not a provider ID
             // Check if the current ID is likely a provider ID (numeric) or if we just want to be sure
@@ -114,6 +123,12 @@ export const authOptions: NextAuthOptions = {
                 });
                 if (dbUser) {
                     token.id = dbUser.id; // Override with the CUID from our database
+
+                    // Logins from before the last password reset/change are no longer valid
+                    const changedAt = dbUser.passwordChangedAt?.getTime()
+                    if (changedAt && (token.authTime ?? 0) < changedAt) {
+                        return { ...token, revoked: true }
+                    }
                 }
             }
 
@@ -124,13 +139,25 @@ export const authOptions: NextAuthOptions = {
             return token
         },
         async session({ session, token }){
+            // Revoked login: return a session with no user so every API route
+            // answers 401 and SessionGuard signs the browser out
+            if (token.revoked) {
+                return { expires: session.expires } as any
+            }
+
             if(session.user){
                 session.user.id = token.id as string
                 session.user.name = token.name as string
                 session.user.email = token.email as string
             }
             
-            (session as any).accessToken = token
+            // Signed, short-lived token the socket server verifies with the same secret.
+            // Never expose the raw NextAuth token object to the client.
+            (session as any).accessToken = jwt.sign(
+                { id: token.id, email: token.email, name: token.name },
+                process.env.NEXTAUTH_SECRET as string,
+                { expiresIn: '12h' }
+            )
             
             return session
         }

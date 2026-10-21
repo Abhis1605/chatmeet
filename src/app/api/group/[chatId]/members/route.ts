@@ -1,3 +1,4 @@
+import { publicUserSelect } from "@/lib/public-user";
 import {
   canManageGroup,
   GROUP_ROLES,
@@ -21,7 +22,7 @@ const getCurrentMember = (chatId: string, userId: string) =>
 const includeChat = {
   members: {
     include: {
-      user: true,
+      user: { select: publicUserSelect },
     },
   },
   messages: {

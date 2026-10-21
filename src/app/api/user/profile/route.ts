@@ -188,6 +188,15 @@ export async function PATCH(req: Request) {
       { broadcast: true },
     );
 
+    // Invisible / online status / last seen changed: update what others see now
+    if (
+      body.statusPreference !== undefined ||
+      body.showOnlineStatus !== undefined ||
+      body.showLastSeen !== undefined
+    ) {
+      await notifySocket("presence-refresh", {}, { userIds: [updated.id] });
+    }
+
     return Response.json({ profile: updated });
   } catch (error) {
     console.error(error);

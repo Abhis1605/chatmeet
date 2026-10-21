@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { publicUserSelect } from "@/lib/public-user";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { getRoomMember } from "@/lib/roomUtils";
@@ -24,7 +25,7 @@ export async function GET(
 
     const members = await prisma.chatMember.findMany({
       where: { chatId },
-      include: { user: true },
+      include: { user: { select: publicUserSelect } },
       orderBy: { user: { name: "asc" } },
     });
 

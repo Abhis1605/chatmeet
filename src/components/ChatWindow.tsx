@@ -63,6 +63,13 @@ export default function ChatWindow() {
     (member: any) => member.user.id !== session?.user?.id,
   )?.user;
 
+  // When the other person last read this 1:1 chat; null if receipts are hidden
+  const otherReadAt = selectedChat?.isGroup
+    ? null
+    : selectedChat?.members?.find(
+        (member: any) => member.user.id !== session?.user?.id,
+      )?.lastReadAt ?? null;
+
   const currentMember = selectedChat?.members?.find(
     (member: any) =>
       member.userId === session?.user?.id || member.user?.id === session?.user?.id,
@@ -262,6 +269,7 @@ export default function ChatWindow() {
         messages={messages}
         session={session}
         isGroup={Boolean(selectedChat?.isGroup)}
+        otherReadAt={otherReadAt}
         onLoadMore={fetchNextPage}
         hasMore={Boolean(hasNextPage)}
         isLoadingMore={isFetchingNextPage}

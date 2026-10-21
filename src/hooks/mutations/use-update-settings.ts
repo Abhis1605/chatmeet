@@ -11,12 +11,16 @@ export function useUpdateSettings() {
 
   return useMutation({
     mutationFn: (payload: UpdateSettingsRequest) => updateSettings(payload),
-    onSuccess: (data) => {
+    onSuccess: (data, payload) => {
       if (data.error) {
         showError(data.error);
         return;
       }
       queryClient.setQueryData(queryKeys.settings.me, data.settings);
+      // Turning read receipts on/off changes which "Seen" data the chat list returns
+      if (payload.readReceiptsEnabled !== undefined) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+      }
       showSuccess("Settings updated");
     },
     onError: () => showError("Failed to update settings. Please try again."),

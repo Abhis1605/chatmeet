@@ -6,7 +6,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { Socket } from "socket.io-client";
 import { connectSocket } from "@/lib/socket";
@@ -228,6 +228,33 @@ export default function SocketProvider({
       }
     };
 
+    // ── chat-read: another member read the chat → update "Seen" ─────────
+    const handleChatRead = (data: { chatId: string; userId: string; lastReadAt: string }) => {
+      // Receipts are mutual: if I turned mine off, I don't see others' either
+      const mySettings = queryClient.getQueryData<{ readReceiptsEnabled?: boolean }>(
+        queryKeys.settings.me
+      );
+      if (mySettings?.readReceiptsEnabled === false) return;
+
+      for (const type of ["personal", "group"]) {
+        queryClient.setQueryData<ChatDto[]>(queryKeys.chats.list(type), (prev) => {
+          if (!prev) return prev;
+          return prev.map((chat) =>
+            chat.id !== data.chatId
+              ? chat
+              : {
+                  ...chat,
+                  members: chat.members.map((member) =>
+                    member.userId === data.userId
+                      ? { ...member, lastReadAt: data.lastReadAt }
+                      : member
+                  ),
+                }
+          );
+        });
+      }
+    };
+
     // ── user-profile-updated: patch name/avatar in chat + room caches ───
     const handleProfileUpdated = (data: {
       userId: string;
@@ -345,6 +372,7 @@ export default function SocketProvider({
     socket.on("message-deleted", handleMessageDeleted);
     socket.on("chat-updated", handleChatUpdated);
     socket.on("user-presence-changed", handlePresenceChanged);
+    socket.on("chat-read", handleChatRead);
     socket.on("user-profile-updated", handleProfileUpdated);
     socket.on("room-member-joined", handleRoomMemberJoined);
     socket.on("room-member-left", handleRoomMemberLeft);
@@ -352,6 +380,13 @@ export default function SocketProvider({
     socket.on("room-deleted", handleRoomDeleted);
     socket.on("call-incoming", handleCallIncoming);
     socket.on("call-ended", handleCallEnded);
+
+    // ── session-revoked: password was reset/changed on another device ───
+    const handleSessionRevoked = () => {
+      toast.error("Your password was changed. Please sign in again.");
+      void signOut({ callbackUrl: "/login" });
+    };
+    socket.on("session-revoked", handleSessionRevoked);
 
     // ── Tell the server we're gone before the tab actually closes ───────
     // Relying only on the transport close to reach the server is not
@@ -373,6 +408,7 @@ export default function SocketProvider({
       socket.off("message-deleted", handleMessageDeleted);
       socket.off("chat-updated", handleChatUpdated);
       socket.off("user-presence-changed", handlePresenceChanged);
+      socket.off("chat-read", handleChatRead);
       socket.off("user-profile-updated", handleProfileUpdated);
       socket.off("room-member-joined", handleRoomMemberJoined);
       socket.off("room-member-left", handleRoomMemberLeft);
@@ -380,6 +416,7 @@ export default function SocketProvider({
       socket.off("room-deleted", handleRoomDeleted);
       socket.off("call-incoming", handleCallIncoming);
       socket.off("call-ended", handleCallEnded);
+      socket.off("session-revoked", handleSessionRevoked);
     };
   }, [status, accessToken, sessionUserId, queryClient, setConnected]);
 

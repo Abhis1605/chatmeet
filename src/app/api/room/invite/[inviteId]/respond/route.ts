@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { publicUserSelect } from "@/lib/public-user";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { notifySocket } from "@/lib/socket-notify";
@@ -72,7 +73,7 @@ export async function POST(
           role: "MEMBER",
           canSend: true,
         },
-        include: { user: true },
+        include: { user: { select: publicUserSelect } },
       });
 
       return member;

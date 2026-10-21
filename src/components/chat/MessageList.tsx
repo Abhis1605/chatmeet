@@ -12,6 +12,8 @@ interface Props {
   isLoadingMore?: boolean;
   onEditMessage?: (message: any) => void;
   onDeleteMessage?: (message: any) => void;
+  // 1:1 chats: when the other person last read the chat (null = receipts hidden)
+  otherReadAt?: string | null;
 }
 
 export default function MessageList({
@@ -23,7 +25,19 @@ export default function MessageList({
   isLoadingMore = false,
   onEditMessage,
   onDeleteMessage,
+  otherReadAt = null,
 }: Props) {
+  // Read status is shown once, under my most recent message
+  const myLastMessage = [...messages].reverse().find(
+    (message) => message.senderId === session?.user?.id
+  );
+  const myLastStatus =
+    myLastMessage && otherReadAt
+      ? new Date(otherReadAt) >= new Date(myLastMessage.createdAt)
+        ? "Seen"
+        : "Sent"
+      : null;
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -88,14 +102,24 @@ export default function MessageList({
       )}
 
       {messages.map((message) => (
-        <MessageBubble
-          key={message.id}
-          message={message}
-          isMe={message.senderId === session?.user?.id}
-          showSender={isGroup}
-          onEdit={onEditMessage}
-          onDelete={onDeleteMessage}
-        />
+        <div key={message.id}>
+          <MessageBubble
+            message={message}
+            isMe={message.senderId === session?.user?.id}
+            showSender={isGroup}
+            onEdit={onEditMessage}
+            onDelete={onDeleteMessage}
+          />
+          {message.id === myLastMessage?.id && myLastStatus && (
+            <p
+              className={`mt-1 text-right text-[10px] ${
+                myLastStatus === "Seen" ? "text-primary" : "text-muted"
+              }`}
+            >
+              {myLastStatus}
+            </p>
+          )}
+        </div>
       ))}
 
       <div ref={bottomRef} />

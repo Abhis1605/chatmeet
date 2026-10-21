@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { publicUserSelect } from "@/lib/public-user";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { notifySocket } from "@/lib/socket-notify";
@@ -28,7 +29,7 @@ export async function GET(
       orderBy: { createdAt: "desc" },
       take: 50,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      include: { sender: true },
+      include: { sender: { select: publicUserSelect } },
     });
 
     const nextCursor = messages.length === 50 ? messages[messages.length - 1].id : null;
@@ -71,7 +72,7 @@ export async function PATCH(
     const message = await prisma.message.update({
       where: { id: messageId },
       data: { content },
-      include: { sender: true },
+      include: { sender: { select: publicUserSelect } },
     });
     await notifySocket("message-updated", message, { chatId });
     return Response.json({ message });

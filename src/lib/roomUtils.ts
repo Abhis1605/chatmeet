@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { publicUserSelect } from "@/lib/public-user";
 
 /** Generates a 6-char code avoiding ambiguous chars: 0,O,1,I,L */
 export function generateRoomCode(): string {
@@ -20,7 +21,7 @@ export async function uniqueRoomCode(): Promise<string> {
 }
 
 export const roomInclude = {
-  members: { include: { user: true } },
+  members: { include: { user: { select: publicUserSelect } } },
   messages: {
     take: 1,
     orderBy: { createdAt: "desc" as const },

@@ -17,6 +17,8 @@ export async function POST() {
       email: true,
       password: true,
       provider: true,
+      statusPreference: true,
+      showLastSeen: true,
     },
   });
 
@@ -36,7 +38,9 @@ export async function POST() {
       otp,
       otpExpiry: shouldIssueOtp ? new Date(Date.now() + 60 * 1000) : null,
       isOnline: false,
-      lastSeen: new Date(),
+      // Same privacy rule as the socket server's setUserPresence
+      lastSeen:
+        user.statusPreference !== "INVISIBLE" && user.showLastSeen ? new Date() : null,
     },
   });
 

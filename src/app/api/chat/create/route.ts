@@ -1,15 +1,29 @@
 import { prisma } from "@/lib/prisma";
+import { publicUserSelect } from "@/lib/public-user";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../auth/[...nextauth]/route";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { userId, targetUserId } = body;
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    console.log("Creating chat between:", userId, "and", targetUserId);
+    // The creator is always the logged-in user, whatever the body says
+    const userId = session.user.id;
+    const { targetUserId } = await req.json();
 
-    if (!userId || !targetUserId) {
+    if (!targetUserId || typeof targetUserId !== "string") {
       return Response.json(
-        { error: "Missing userId or targetUserId" },
+        { error: "Missing targetUserId" },
+        { status: 400 }
+      );
+    }
+
+    if (targetUserId === userId) {
+      return Response.json(
+        { error: "Cannot start a chat with yourself" },
         { status: 400 }
       );
     }
@@ -26,7 +40,7 @@ export async function POST(req: Request) {
       include: {
         members: {
           include: {
-            user: true,
+            user: { select: publicUserSelect },
           },
         },
       },
@@ -51,7 +65,7 @@ export async function POST(req: Request) {
         include: {
           members: {
             include: {
-              user: true,
+              user: { select: publicUserSelect },
             },
           },
         },
@@ -61,11 +75,7 @@ export async function POST(req: Request) {
     } catch (dbError: any) {
       console.error("Prisma specific error:", dbError.code, dbError.meta);
       return Response.json(
-        { 
-          error: "Database constraint violated", 
-          details: dbError.meta,
-          code: dbError.code 
-        },
+        { error: "Could not create chat" },
         { status: 500 }
       );
     }
