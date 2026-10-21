@@ -10,6 +10,8 @@ export interface ChatMemberDto {
   chatId: string;
   role: ChatMemberRole;
   canSend: boolean;
+  // null when read receipts are hidden (either side turned them off)
+  lastReadAt?: string | null;
   user: UserDto;
 }
 

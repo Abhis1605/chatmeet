@@ -6,13 +6,14 @@ const PUBLIC_PATHS = new Set([
   "/login",
   "/register",
   "/verify",
+  "/forgot-password",
   "/terms",
   "/privacy",
   "/contact",
   "/help-center",
 ]);
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (PUBLIC_PATHS.has(pathname)) {
@@ -24,7 +25,7 @@ export async function middleware(request: NextRequest) {
     secret: process.env.NEXTAUTH_SECRET,
   });
 
-  if (token) {
+  if (token && !token.revoked) {
     return NextResponse.next();
   }
 

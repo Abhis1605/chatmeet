@@ -1,4 +1,5 @@
 import { canDeleteGroup, canManageGroup } from "@/lib/groupPermissions";
+import { publicUserSelect } from "@/lib/public-user";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
@@ -7,7 +8,7 @@ import { notifySocket } from "@/lib/socket-notify";
 const includeChat = {
   members: {
     include: {
-      user: true,
+      user: { select: publicUserSelect },
     },
   },
   messages: {

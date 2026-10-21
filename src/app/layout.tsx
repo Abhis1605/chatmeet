@@ -3,6 +3,7 @@ import { DM_Sans, Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "./Providers";
 import { Toaster } from "sonner";
+import { themeInitScript } from "@/lib/theme";
 
 const dmSans = DM_Sans({
   variable: "--font-dm-sans",
@@ -34,7 +35,12 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${dmSans.variable} ${inter.variable} ${plexMono.variable} h-full antialiased`}
+      // The theme script adds a class to <html> before React hydrates
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="min-h-full flex flex-col">
         <Providers>
           {children}

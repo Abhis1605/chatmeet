@@ -1,17 +1,23 @@
 import { io, Socket } from "socket.io-client";
 
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ?? "http://localhost:5000";
+
 let socket: Socket | null = null;
 
-export const connectSocket = (token: any) => {
+export const connectSocket = (token: string) => {
   if (!socket) {
-    socket = io("http://localhost:5000", {
+    socket = io(SOCKET_URL, {
       auth: {
         token,
       },
       transports: ['websocket']
     });
-  } else if (!socket.connected && !socket.active) {
-    socket.connect();
+  } else {
+    // Keep the latest signed token so reconnects don't use an expired one
+    socket.auth = { token };
+    if (!socket.connected && !socket.active) {
+      socket.connect();
+    }
   }
   return socket;
 };

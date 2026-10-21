@@ -29,6 +29,9 @@ model User {
   resetToken  String?
   resetExpiry DateTime?
 
+  // Logins issued before this time are rejected (set on password reset/change)
+  passwordChangedAt DateTime?
+
   isOnline Boolean   @default(false)
   lastSeen DateTime?
 

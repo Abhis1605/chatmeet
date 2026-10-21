@@ -1,8 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import { sendOTPEmail } from "@/lib/resend";
 import bcrypt from "bcrypt";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
+  // 5 sign-ups per IP per hour
+  if (!rateLimit(`register:${getClientIp(req)}`, 5, 60 * 60_000).ok) {
+    return Response.json({
+      error: "Too many sign-up attempts. Please try again later.",
+    });
+  }
+
   const { email, password } = await req.json();
 
   if (!email || !password) {
@@ -48,8 +56,7 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error("Failed to send OTP email:", err)
     if (process.env.NODE_ENV !== "production") {
-      console.log(`[DEV] OTP for ${email}: ${otp}`)
-    } else {
+      console.log(`[DEV] OTP for ${email}: ${otp}`)    } else {
       return Response.json({
         error: "Failed to send verification email. Please try again later.",
       })

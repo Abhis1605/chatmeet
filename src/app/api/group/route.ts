@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { publicUserSelect } from "@/lib/public-user";
 import { GROUP_ROLES } from "@/lib/groupPermissions";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
       include: {
         members: {
           include: {
-            user: true,
+            user: { select: publicUserSelect },
           },
         },
         messages: {

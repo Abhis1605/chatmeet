@@ -39,6 +39,8 @@ export interface UpdateProfileResponse {
 export interface ChangePasswordRequest {
   currentPassword: string;
   newPassword: string;
+  // This tab's socket, kept connected while other devices are signed out
+  socketId?: string;
 }
 
 export interface ChangePasswordResponse {

@@ -1,11 +1,22 @@
 import { prisma } from "@/lib/prisma";
 import { sendOTPEmail } from "@/lib/resend";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
   const { email } = await req.json();
 
   if (!email) {
     return Response.json({ error: "Email required" });
+  }
+
+  // Stop email spam: 3 resends per email and 10 per IP every 15 minutes
+  if (
+    !rateLimit(`resend-otp:${String(email).toLowerCase()}`, 3, 15 * 60_000).ok ||
+    !rateLimit(`resend-otp-ip:${getClientIp(req)}`, 10, 15 * 60_000).ok
+  ) {
+    return Response.json({
+      error: "Too many code requests. Please wait a few minutes and try again.",
+    });
   }
 
   const user = await prisma.user.findUnique({

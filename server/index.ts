@@ -1,12 +1,23 @@
 import express from 'express'
+import { publicUserSelect } from '../src/lib/public-user'
 import http from 'http'
 import { Server, Socket } from 'socket.io'
 import { PrismaClient } from '../src/generated/prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import dotenv from 'dotenv'
+import jwt from 'jsonwebtoken'
 import { canSendGroupMessage } from '../src/lib/groupPermissions'
 
 dotenv.config()
+
+const JWT_SECRET = process.env.NEXTAUTH_SECRET
+const NOTIFY_SECRET = process.env.SOCKET_NOTIFY_SECRET
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:3000'
+const PORT = Number(process.env.SOCKET_PORT || process.env.PORT || 5000)
+
+if (!JWT_SECRET || !NOTIFY_SECRET) {
+    throw new Error('NEXTAUTH_SECRET and SOCKET_NOTIFY_SECRET must be set for the socket server')
+}
 
 interface SocketUser {
     id: string,
@@ -27,21 +38,33 @@ const formatLastSeen = (date: Date | string | null | undefined) => {
 
 // Derives presence from live connections at write time so out-of-order
 // connect/disconnect writes always settle on the real state.
+//
+// User.isOnline / User.lastSeen hold what OTHER users may see, after the
+// user's privacy settings are applied. Every API reads those columns, so
+// filtering here covers all of them.
 const setUserPresence = async (userId: string) => {
-    const isOnline = (activeConnections.get(userId)?.size ?? 0) > 0
+    const connected = (activeConnections.get(userId)?.size ?? 0) > 0
+
+    const prefs = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { statusPreference: true, showOnlineStatus: true, showLastSeen: true },
+    })
+    if (!prefs) return
+
+    // Invisible hides both; otherwise each toggle hides its own part
+    const invisible = prefs.statusPreference === 'INVISIBLE'
+    const isOnline = connected && !invisible && prefs.showOnlineStatus
+    const lastSeen = !connected && !invisible && prefs.showLastSeen ? new Date() : null
 
     await prisma.user.update({
         where: { id: userId },
-        data: {
-            isOnline,
-            lastSeen: isOnline ? null : new Date(),
-        },
+        data: { isOnline, lastSeen },
     })
 
     io.emit('user-presence-changed', {
         userId,
         isOnline,
-        lastSeen: isOnline ? null : formatLastSeen(new Date()),
+        lastSeen: formatLastSeen(lastSeen),
     })
 }
 
@@ -65,10 +88,37 @@ const emitToUsers = (userIds: string[], event: string, payload: unknown) => {
 }
 
 app.post('/notify', (req, res) => {
+    if (req.get('x-notify-secret') !== NOTIFY_SECRET) {
+        return res.status(401).json({ error: 'Unauthorized' })
+    }
+
     const { event, payload, userIds, chatId, broadcast } = req.body ?? {}
 
     if (!event) {
         return res.status(400).json({ error: 'event is required' })
+    }
+
+    // Password reset/change: tell the user's other connections to sign out, then cut them off
+    if (event === 'session-revoked' && Array.isArray(userIds)) {
+        for (const userId of userIds) {
+            for (const socketId of activeConnections.get(userId) ?? []) {
+                if (socketId === payload?.keepSocketId) continue
+                const target = io.sockets.sockets.get(socketId)
+                target?.emit('session-revoked')
+                target?.disconnect(true)
+            }
+        }
+        return res.json({ ok: true })
+    }
+
+    // Privacy settings changed: recompute and re-broadcast what others see
+    if (event === 'presence-refresh' && Array.isArray(userIds)) {
+        for (const userId of userIds) {
+            setUserPresence(userId).catch((error) => {
+                console.error('Failed to refresh presence:', error)
+            })
+        }
+        return res.json({ ok: true })
     }
 
     if (broadcast) {
@@ -93,42 +143,50 @@ const io = new Server(server, {
     pingInterval: 10000,
     pingTimeout: 5000,
     cors: {
-        origin: 'http://localhost:3000',
+        origin: CLIENT_ORIGIN,
         methods: ['GET', 'POST'],
         credentials: true
     }
 })
 
-io.use((socket: CustomSocket, next) => {
+io.use(async (socket: CustomSocket, next) => {
     try {
         const token = socket.handshake.auth.token
 
-        console.log('Incoming token:', token)
-
-        if (!token) {
+        if (typeof token !== 'string') {
             return next(new Error('Unauthorized'))
         }
 
-        console.log('Decoded token', token)
+        // Throws if the signature is invalid or the token has expired
+        const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload & Partial<SocketUser>
 
-        // socket.user = {
-        //     id: token.id,
-        // email: token.email,
-        // name: token.name
-        // }
+        if (!decoded.id) {
+            return next(new Error('Unauthorized'))
+        }
 
-        socket.user = token as SocketUser
-        console.log('Socket user set to:', socket.user)
+        // Socket tokens issued before the last password change are no longer valid
+        const dbUser = await prisma.user.findUnique({
+            where: { id: decoded.id },
+            select: { passwordChangedAt: true },
+        })
+        if (!dbUser) {
+            return next(new Error('Unauthorized'))
+        }
+        const changedAt = dbUser.passwordChangedAt?.getTime()
+        // iat is in whole seconds, so compare at second precision
+        if (changedAt && (decoded.iat ?? 0) < Math.floor(changedAt / 1000)) {
+            return next(new Error('Unauthorized'))
+        }
 
+        socket.user = { id: decoded.id, email: decoded.email ?? '', name: decoded.name }
         next()
-    } catch (error) {
-        console.error('Auth error detail:', error)
+    } catch {
         next(new Error('Unauthorized'))
     }
 })
 
 io.on('connection', (socket: CustomSocket) => {
-    console.log('User connected - ID:', socket.user?.id, 'Email:', socket.user?.email)
+    console.log('User connected:', socket.user?.id)
 
     if (socket.user?.id) {
         const sockets = activeConnections.get(socket.user.id) ?? new Set<string>()
@@ -142,19 +200,28 @@ io.on('connection', (socket: CustomSocket) => {
         }
     }
 
-    socket.onAny((event, ...args) => {
-        console.log('Event:', event, args)
-    })
+    socket.on('join-chat', async (chatId: string) => {
+        try {
+            if (typeof chatId !== 'string' || !chatId || !socket.user?.id) return
 
-    socket.on('join-chat', (chatId: string) => {
-        if (!chatId) return
-        socket.join(chatId)
-        console.log(`User ${socket.user?.email} joined room: ${chatId}`)
+            const member = await prisma.chatMember.findFirst({
+                where: { chatId, userId: socket.user.id },
+                select: { id: true },
+            })
+
+            if (!member) {
+                console.log('Rejected join-chat for non-member', socket.user.id, chatId)
+                return
+            }
+
+            socket.join(chatId)
+        } catch (error) {
+            console.error('Socket join-chat error:', error)
+        }
     })
 
     socket.on('send-message', async ({ chatId, content, type, fileUrl, fileName, fileType, fileSize }: { chatId: string, content?: string, type: 'TEXT' | 'IMAGE' | 'FILE' | 'VIDEO', fileUrl?: string, fileName?: string, fileType?: string, fileSize?: number }) => {
         try {
-            console.log(`Message from ${socket.user?.email} to ${chatId}: ${content}`)
             if (!chatId) return
 
             if (type === 'TEXT' && !content) {
@@ -198,7 +265,7 @@ io.on('connection', (socket: CustomSocket) => {
                     fileSize,
                 },
                 include: {
-                    sender: true
+                    sender: { select: publicUserSelect }
                 }
             })
 
@@ -217,8 +284,9 @@ io.on('connection', (socket: CustomSocket) => {
         }
     })
 
+    // Only sockets that passed the join-chat membership check can signal typing
     socket.on('typing', (chatId) => {
-        console.log(`${socket.user?.email} is typing in ${chatId}`)
+        if (!socket.rooms.has(chatId)) return
         socket.to(chatId).emit('user-typing', {
             userId: socket.user?.id,
             name: socket.user?.name
@@ -226,7 +294,7 @@ io.on('connection', (socket: CustomSocket) => {
     })
 
     socket.on('stop-typing', (chatId) => {
-        console.log(`${socket.user?.email} stopped typing`)
+        if (!socket.rooms.has(chatId)) return
         socket.to(chatId).emit('user-stop-typing', {
             userId: socket.user?.id
         })
@@ -267,7 +335,7 @@ prisma.user
     })
     .catch((error) => console.error('Failed to reset presence on startup:', error))
     .finally(() => {
-        server.listen(5000, () => {
-            console.log("Socket server running on http://localhost:5000");
+        server.listen(PORT, () => {
+            console.log(`Socket server running on port ${PORT}`);
         });
     });

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { publicUserSelect } from "@/lib/public-user";
 import { Prisma } from "../../../../generated/prisma/client";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
@@ -34,7 +35,7 @@ export async function GET(req: Request) {
       include: {
         members: {
           include: {
-            user: true,
+            user: { select: publicUserSelect },
           },
         },
         messages: {
@@ -66,6 +67,21 @@ export async function GET(req: Request) {
       unreadRows.map((row) => [row.chatId, Number(row.unreadCount)])
     );
 
+    // Read receipts work both ways: if I turned them off I don't see others'
+    // reads, and nobody sees the reads of a member who turned them off.
+    const memberIds = [...new Set(chats.flatMap((chat) => chat.members.map((m) => m.userId)))];
+    const receiptsOff = new Set(
+      memberIds.length
+        ? (
+            await prisma.user.findMany({
+              where: { id: { in: memberIds }, readReceiptsEnabled: false },
+              select: { id: true },
+            })
+          ).map((u) => u.id)
+        : []
+    );
+    const iHideReceipts = receiptsOff.has(session.user.id);
+
     const chatsWithUnread = chats.map((chat) => {
       const lastMessage = chat.messages[0] ? {
         id: chat.messages[0].id,
@@ -77,6 +93,11 @@ export async function GET(req: Request) {
 
       return {
         ...chat,
+        members: chat.members.map((member) =>
+          member.userId !== session.user.id && (iHideReceipts || receiptsOff.has(member.userId))
+            ? { ...member, lastReadAt: null }
+            : member
+        ),
         unreadCount: unreadByChatId.get(chat.id) ?? 0,
         lastMessage,
         messages: undefined,

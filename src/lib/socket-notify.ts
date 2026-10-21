@@ -16,7 +16,10 @@ export async function notifySocket(
   try {
     await fetch(SOCKET_NOTIFY_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-notify-secret": process.env.SOCKET_NOTIFY_SECRET ?? "",
+      },
       body: JSON.stringify({
         event,
         payload,

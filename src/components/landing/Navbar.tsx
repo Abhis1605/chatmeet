@@ -5,6 +5,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { Menu, X, Sun, Moon } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { useSession } from "next-auth/react";
+import { useQueryClient } from "@tanstack/react-query";
+import { applyTheme, isDarkActive } from "@/lib/theme";
+import { updateSettings } from "@/services/settings.service";
+import { queryKeys } from "@/lib/query-keys";
 
 const NAV_LINKS = [
   { label: "Problems", href: "#problems" },
@@ -19,20 +24,25 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const { status } = useSession();
+  const queryClient = useQueryClient();
 
+  // Follow the theme actually applied to <html> (by the head script,
+  // ThemeApplier or the OS), so the icon always matches what's on screen
   useEffect(() => {
-    // Check initial theme
-    const savedTheme = localStorage.getItem("theme");
-    const isDark = savedTheme === "dark" || (!savedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    
-    setIsDarkMode(isDark);
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-      document.documentElement.classList.remove("light");
-    } else {
-      document.documentElement.classList.remove("dark");
-      document.documentElement.classList.add("light");
-    }
+    const sync = () => setIsDarkMode(isDarkActive());
+    sync();
+
+    const observer = new MutationObserver(sync);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    media.addEventListener("change", sync);
+
+    return () => {
+      observer.disconnect();
+      media.removeEventListener("change", sync);
+    };
   }, []);
 
   useEffect(() => {
@@ -44,16 +54,16 @@ export default function Navbar() {
   }, []);
 
   const toggleTheme = () => {
-    const newTheme = !isDarkMode;
-    setIsDarkMode(newTheme);
-    if (newTheme) {
-      document.documentElement.classList.add("dark");
-      document.documentElement.classList.remove("light");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      document.documentElement.classList.add("light");
-      localStorage.setItem("theme", "light");
+    const next = isDarkMode ? "LIGHT" : "DARK";
+    applyTheme(next);
+
+    // Logged-in users: save it to their settings too, otherwise the saved
+    // setting would switch the theme back on the next reload
+    if (status === "authenticated") {
+      queryClient.setQueryData(queryKeys.settings.me, (old: any) => (old ? { ...old, theme: next } : old));
+      updateSettings({ theme: next }).catch((error) => {
+        console.error("Failed to save theme:", error);
+      });
     }
   };
 

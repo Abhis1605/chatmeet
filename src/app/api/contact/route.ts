@@ -1,8 +1,13 @@
 import { sendSupportEmail } from "@/lib/resend";
+import { getClientIp, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(req: Request) {
+  // 5 messages per IP per hour
+  const limit = rateLimit(`contact:${getClientIp(req)}`, 5, 60 * 60_000);
+  if (!limit.ok) return tooManyRequests(limit.retryAfter);
+
   try {
     const body = await req.json();
     const firstName = typeof body.firstName === "string" ? body.firstName.trim() : "";

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import bcrypt from "bcrypt";
+import { kickUserSockets } from "@/lib/session-revoke";
 
 export async function POST(req: Request) {
   try {
@@ -10,7 +11,8 @@ export async function POST(req: Request) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { currentPassword, newPassword } = await req.json();
+    // socketId: this tab's socket, kept connected while other devices are kicked
+    const { currentPassword, newPassword, socketId } = await req.json();
 
     if (!currentPassword || !newPassword) {
       return Response.json({ error: "All fields required" }, { status: 400 });
@@ -38,8 +40,12 @@ export async function POST(req: Request) {
 
     await prisma.user.update({
       where: { id: user.id },
-      data: { password: hashed },
+      // Signs out every other device; this one signs in again with the new
+      // password right after (see ProfileMainPanel)
+      data: { password: hashed, passwordChangedAt: new Date() },
     });
+
+    await kickUserSockets(user.id, typeof socketId === "string" ? socketId : undefined);
 
     return Response.json({ success: true });
   } catch (error) {
