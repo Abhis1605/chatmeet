@@ -10,6 +10,8 @@ interface Props {
   onLoadMore?: () => void;
   hasMore?: boolean;
   isLoadingMore?: boolean;
+  onEditMessage?: (message: any) => void;
+  onDeleteMessage?: (message: any) => void;
 }
 
 export default function MessageList({
@@ -19,6 +21,8 @@ export default function MessageList({
   onLoadMore,
   hasMore = false,
   isLoadingMore = false,
+  onEditMessage,
+  onDeleteMessage,
 }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
@@ -89,6 +93,8 @@ export default function MessageList({
           message={message}
           isMe={message.senderId === session?.user?.id}
           showSender={isGroup}
+          onEdit={onEditMessage}
+          onDelete={onDeleteMessage}
         />
       ))}
 

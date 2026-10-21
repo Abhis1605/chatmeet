@@ -25,7 +25,11 @@ const formatLastSeen = (date: Date | string | null | undefined) => {
     return date instanceof Date ? date.toISOString() : new Date(date).toISOString()
 }
 
-const setUserPresence = async (userId: string, isOnline: boolean) => {
+// Derives presence from live connections at write time so out-of-order
+// connect/disconnect writes always settle on the real state.
+const setUserPresence = async (userId: string) => {
+    const isOnline = (activeConnections.get(userId)?.size ?? 0) > 0
+
     await prisma.user.update({
         where: { id: userId },
         data: {
@@ -85,6 +89,9 @@ app.post('/notify', (req, res) => {
 const server = http.createServer(app)
 
 const io = new Server(server, {
+    // Detect abruptly closed tabs (e.g. incognito) within ~15s instead of ~45s
+    pingInterval: 10000,
+    pingTimeout: 5000,
     cors: {
         origin: 'http://localhost:3000',
         methods: ['GET', 'POST'],
@@ -129,7 +136,7 @@ io.on('connection', (socket: CustomSocket) => {
         activeConnections.set(socket.user.id, sockets)
 
         if (sockets.size === 1) {
-            setUserPresence(socket.user.id, true).catch((error) => {
+            setUserPresence(socket.user.id).catch((error) => {
                 console.error('Failed to mark user online:', error)
             })
         }
@@ -242,7 +249,7 @@ io.on('connection', (socket: CustomSocket) => {
 
         if (sockets.size === 0) {
             activeConnections.delete(socket.user.id)
-            setUserPresence(socket.user.id, false).catch((error) => {
+            setUserPresence(socket.user.id).catch((error) => {
                 console.error('Failed to mark user offline:', error)
             })
         } else {
@@ -251,6 +258,16 @@ io.on('connection', (socket: CustomSocket) => {
     })
 })
 
-server.listen(5000, () => {
-    console.log("Socket server running on http://localhost:5000");
-});
+// In-memory connections are lost on restart, so clear any stale online flags
+// before accepting connections.
+prisma.user
+    .updateMany({
+        where: { isOnline: true },
+        data: { isOnline: false, lastSeen: new Date() },
+    })
+    .catch((error) => console.error('Failed to reset presence on startup:', error))
+    .finally(() => {
+        server.listen(5000, () => {
+            console.log("Socket server running on http://localhost:5000");
+        });
+    });

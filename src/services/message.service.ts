@@ -14,3 +14,12 @@ export async function fetchMessages(
   });
   return data;
 }
+
+export async function updateMessage(chatId: string, messageId: string, content: string) {
+  const { data } = await apiClient.patch(`/message/${chatId}`, { messageId, content });
+  return data.message;
+}
+
+export async function deleteMessage(chatId: string, messageId: string) {
+  await apiClient.delete(`/message/${chatId}`, { params: { messageId } });
+}

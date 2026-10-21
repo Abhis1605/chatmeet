@@ -21,3 +21,38 @@ export const sendOTPEmail = async (to: string, otp: string) => {
     throw new Error(`Failed to send OTP email: ${error.message}`);
   }
 };
+
+export const sendSupportEmail = async ({
+  firstName,
+  lastName,
+  email,
+  topic,
+  message,
+  phone,
+}: {
+  firstName: string;
+  lastName: string;
+  email: string;
+  topic: string;
+  message: string;
+  phone?: string;
+}) => {
+  const { error } = await resend.emails.send({
+    from: process.env.EMAIL_FROM!,
+    to: process.env.EMAIL_FROM!,
+    replyTo: email,
+    subject: `ChatMeet contact: ${topic}`,
+    text: [
+      `From: ${firstName} ${lastName}`,
+      `Email: ${email}`,
+      phone ? `Phone: ${phone}` : "",
+      `Topic: ${topic}`,
+      "",
+      message,
+    ].filter(Boolean).join("\n"),
+  });
+
+  if (error) {
+    throw new Error(`Failed to send support email: ${error.message}`);
+  }
+};

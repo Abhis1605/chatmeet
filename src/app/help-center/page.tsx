@@ -4,6 +4,7 @@ import Link from "next/link";
 import { CheckCircle2, ExternalLink, Mail } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { FormEvent, useState } from "react";
+import { showError, showSuccess } from "@/lib/toast";
 import { HoverCard } from "@/components/ui/hover-card";
 import Footer from "@/components/landing/Footer";
 import Navbar from "@/components/landing/Navbar";
@@ -38,6 +39,7 @@ export default function HelpCenterPage() {
   const prefersReducedMotion = useReducedMotion();
   const [values, setValues] = useState<FormValues>(INITIAL_VALUES);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const updateValue = (field: keyof FormValues, value: string) => {
     setValues((current) => ({ ...current, [field]: value }));
@@ -58,14 +60,30 @@ export default function HelpCenterPage() {
     return nextErrors;
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextErrors = validate();
     setErrors(nextErrors);
 
     if (Object.keys(nextErrors).length > 0) return;
 
-    // TODO: wire to backend endpoint
+    try {
+      setIsSubmitting(true);
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not send your message.");
+      setValues(INITIAL_VALUES);
+      showSuccess("Message sent. We’ll get back to you soon.");
+    } catch (error) {
+      console.error("Help request submission failed:", error);
+      showError(error instanceof Error ? error.message : "Could not send your message.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -159,7 +177,9 @@ export default function HelpCenterPage() {
                     <p className="mt-1.5 text-right text-xs text-muted">{values.message.length}/1000</p>
                   </FormField>
 
-                  <button type="submit" className="btn-primary w-full py-3 text-sm">Send message</button>
+                  <button type="submit" disabled={isSubmitting} className="btn-primary w-full py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60">
+                    {isSubmitting ? "Sending..." : "Send message"}
+                  </button>
                   <p className="text-center text-xs leading-relaxed text-muted">
                     By contacting us, you agree to our <Link href="/terms" className="text-primary underline underline-offset-2 hover:text-primary-hover">Terms of service</Link> and <Link href="/privacy" className="text-primary underline underline-offset-2 hover:text-primary-hover">Privacy policy</Link>
                   </p>

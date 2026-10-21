@@ -83,6 +83,7 @@ export default function SocketProvider({
             ...prev,
             pages: [{ ...firstPage, messages }, ...restPages],
           };
+
         }
       );
 
@@ -152,6 +153,40 @@ export default function SocketProvider({
               (a, b) =>
                 new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
             );
+        }
+      );
+    };
+
+    const handleMessageUpdated = (msg: MessageDto) => {
+      queryClient.setQueryData<InfiniteData<MessagesPage>>(
+        queryKeys.messages.byChat(msg.chatId),
+        (prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            pages: prev.pages.map((page) => ({
+              ...page,
+              messages: page.messages.map((message) =>
+                message.id === msg.id ? msg : message
+              ),
+            })),
+          };
+        }
+      );
+    };
+
+    const handleMessageDeleted = (data: { id: string; chatId: string }) => {
+      queryClient.setQueryData<InfiniteData<MessagesPage>>(
+        queryKeys.messages.byChat(data.chatId),
+        (prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            pages: prev.pages.map((page) => ({
+              ...page,
+              messages: page.messages.filter((message) => message.id !== data.id),
+            })),
+          };
         }
       );
     };
@@ -292,10 +327,8 @@ export default function SocketProvider({
         action: {
           label: "Join",
           onClick: () => {
-            // Ideally navigate to video call tab and select this chat.
-            // For now, just set active chat.
             useChatUIStore.getState().setActiveChatId(data.chatId);
-            useChatUIStore.getState().setActiveTab("personal"); // Or whichever tab makes sense
+            useChatUIStore.getState().setActiveTab("video");
           },
         },
         duration: 10000,
@@ -308,6 +341,8 @@ export default function SocketProvider({
     };
 
     socket.on("new-message", handleNewMessage);
+    socket.on("message-updated", handleMessageUpdated);
+    socket.on("message-deleted", handleMessageDeleted);
     socket.on("chat-updated", handleChatUpdated);
     socket.on("user-presence-changed", handlePresenceChanged);
     socket.on("user-profile-updated", handleProfileUpdated);
@@ -334,6 +369,8 @@ export default function SocketProvider({
       socket.off("connect");
       socket.off("disconnect");
       socket.off("new-message", handleNewMessage);
+      socket.off("message-updated", handleMessageUpdated);
+      socket.off("message-deleted", handleMessageDeleted);
       socket.off("chat-updated", handleChatUpdated);
       socket.off("user-presence-changed", handlePresenceChanged);
       socket.off("user-profile-updated", handleProfileUpdated);
