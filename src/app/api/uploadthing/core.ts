@@ -52,16 +52,24 @@ export const uploadRouter = {
       maxFileSize: '4MB',
       maxFileCount: 10,
     },
-  }).onUploadComplete(async ({ file }) => {
-    console.log("Uploaded:", file.name);
+  })
+    .middleware(async () => {
+      const session = await getServerSession(authOptions);
+      if (!session?.user?.id) {
+        throw new Error("Unauthorized");
+      }
+      return { userId: session.user.id };
+    })
+    .onUploadComplete(async ({ file }) => {
+      console.log("Uploaded:", file.name);
 
-    return {
-      url: file.ufsUrl,
-      name: file.name,
-      size: file.size,
-      type: file.type,
-    };
-  }),
+      return {
+        url: file.ufsUrl,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+      };
+    }),
 } satisfies FileRouter;
 
 export type UploadRouter = typeof uploadRouter;

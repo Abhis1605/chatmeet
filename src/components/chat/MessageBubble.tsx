@@ -1,16 +1,21 @@
 "use client";
 
-import { File } from "lucide-react";
+import { File, Pencil, Trash2 } from "lucide-react";
 
 interface Props {
   message: any;
   isMe: boolean;
   showSender?: boolean;
+  onEdit?: (message: any) => void;
+  onDelete?: (message: any) => void;
 }
 
-export default function MessageBubble({ message, isMe, showSender = false }: Props) {
+export default function MessageBubble({ message, isMe, showSender = false, onEdit, onDelete }: Props) {
   return (
     <div className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+      <div
+        className="group relative"
+      >
       <div
         className={`rounded-lg px-3 py-2 max-w-[320px] border shadow-sm ${
           isMe
@@ -22,6 +27,21 @@ export default function MessageBubble({ message, isMe, showSender = false }: Pro
           <p className="mb-1 text-[11px] font-medium text-primary">
             {message.sender?.name || message.sender?.email}
           </p>
+        )}
+
+        {isMe && (onEdit || onDelete) && (
+          <div className="absolute -top-3 right-1 hidden items-center gap-1 rounded-md border border-border bg-surface px-1 py-1 shadow-sm group-hover:flex">
+            {message.type === "TEXT" && onEdit && (
+              <button type="button" onClick={() => onEdit(message)} title="Edit message" className="rounded p-1 text-muted hover:bg-surface-soft hover:text-foreground">
+                <Pencil size={13} />
+              </button>
+            )}
+            {onDelete && (
+              <button type="button" onClick={() => onDelete(message)} title="Delete message" className="rounded p-1 text-muted hover:bg-error/10 hover:text-error">
+                <Trash2 size={13} />
+              </button>
+            )}
+          </div>
         )}
 
         {/* TEXT */}
@@ -73,6 +93,7 @@ export default function MessageBubble({ message, isMe, showSender = false }: Pro
             minute: "2-digit",
           })}
         </p>
+      </div>
       </div>
     </div>
   );

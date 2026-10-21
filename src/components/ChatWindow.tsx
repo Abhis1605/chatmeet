@@ -15,6 +15,8 @@ import { useMessages } from "@/hooks/queries/use-messages";
 import { useSocketContext } from "@/providers/socket-provider";
 import { useSendMessage } from "@/hooks/mutations/use-send-message";
 import { useMarkAsRead } from "@/hooks/mutations/use-mark-as-read";
+import { deleteMessage, updateMessage } from "@/services/message.service";
+import { toast } from "sonner";
 
 export default function ChatWindow() {
   const { activeChatId, activeTab } = useChatUIStore();
@@ -48,6 +50,9 @@ export default function ChatWindow() {
   const [isTyping, setIsTyping] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [openGroupMembers, setOpenGroupMembers] = useState(false);
+  const [editingMessage, setEditingMessage] = useState<any>(null);
+  const [editText, setEditText] = useState("");
+  const [messageActionError, setMessageActionError] = useState<string | null>(null);
 
   const { startUpload } = useUploadThing("messageUploader");
 
@@ -159,6 +164,50 @@ export default function ChatWindow() {
     }
   };
 
+  const beginEditMessage = (message: any) => {
+    setEditingMessage(message);
+    setEditText(message.content || "");
+    setMessageActionError(null);
+  };
+
+  const saveEditMessage = async () => {
+    if (!selectedChat?.id || !editingMessage || !editText.trim()) return;
+    try {
+      setMessageActionError(null);
+      await updateMessage(selectedChat.id, editingMessage.id, editText.trim());
+      setEditingMessage(null);
+      setEditText("");
+    } catch (error) {
+      console.error("Failed to edit message:", error);
+      setMessageActionError("Could not edit that message. Please try again.");
+    }
+  };
+
+  const removeMessage = async (message: any) => {
+    if (!selectedChat?.id) return;
+
+    toast("Delete this message?", {
+      description: "This cannot be undone.",
+      duration: 8000,
+      action: {
+        label: "Delete",
+        onClick: async () => {
+          try {
+            setMessageActionError(null);
+            await deleteMessage(selectedChat.id, message.id);
+          } catch (error) {
+            console.error("Failed to delete message:", error);
+            setMessageActionError("Could not delete that message. Please try again.");
+          }
+        },
+      },
+      cancel: {
+        label: "Cancel",
+        onClick: () => undefined,
+      },
+    });
+  };
+
   const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setInput(value);
@@ -216,9 +265,45 @@ export default function ChatWindow() {
         onLoadMore={fetchNextPage}
         hasMore={Boolean(hasNextPage)}
         isLoadingMore={isFetchingNextPage}
+        onEditMessage={beginEditMessage}
+        onDeleteMessage={removeMessage}
       />
 
+      {messageActionError && (
+        <p className="border-t border-border bg-surface px-4 py-2 text-xs text-error" role="alert">
+          {messageActionError}
+        </p>
+      )}
+
       <div className="p-4 gap-2 border-t border-border">
+        {editingMessage && (
+          <div className="mb-3 rounded-lg border border-primary/30 bg-surface-soft p-3">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <p className="text-xs font-medium text-primary">Editing message</p>
+              <button
+                type="button"
+                onClick={() => setEditingMessage(null)}
+                className="text-xs text-muted hover:text-foreground"
+              >
+                Cancel
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={editText}
+                onChange={(event) => setEditText(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void saveEditMessage();
+                }}
+                className="min-w-0 flex-1 rounded-full border border-border bg-background px-4 py-2 text-sm text-foreground outline-none focus:border-primary"
+                autoFocus
+              />
+              <button type="button" onClick={() => void saveEditMessage()} className="btn-primary px-4 py-2 text-xs">
+                Save
+              </button>
+            </div>
+          </div>
+        )}
         <ChatInput
           input={input}
           onChange={handleTyping}

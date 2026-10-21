@@ -7,6 +7,7 @@ import SuccessStories from "@/components/landing/SuccessStories";
 import FAQSection from "@/components/landing/FAQSection";
 import FinalCTA from "@/components/landing/FinalCTA";
 import Footer from "@/components/landing/Footer";
+import ScrollToTop from "@/components/landing/ScrollToTop";
 
 export default function Home() {
   return (
@@ -20,6 +21,7 @@ export default function Home() {
       <FAQSection />
       <FinalCTA />
       <Footer />
+      <ScrollToTop />
     </main>
   );
 }

@@ -9,9 +9,10 @@ import {
   selectIsConnectedToRoom,
   useVideo,
   useAVToggle,
+  useScreenShare,
 } from "@100mslive/react-sdk";
 import type { HMSPeer } from "@100mslive/react-sdk";
-import { Mic, MicOff, Video, VideoOff, PhoneOff, LogOut } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, PhoneOff, LogOut, MonitorUp, MonitorStop } from "lucide-react";
 import { useEndCall } from "@/hooks/mutations/use-end-call";
 
 interface CallRoomViewProps {
@@ -43,14 +44,51 @@ function PeerTile({ peer }: { peer: HMSPeer }) {
   );
 }
 
+function ScreenShareTile({ trackId, name }: { trackId: string; name: string }) {
+  const { videoRef } = useVideo({ trackId });
+
+  return (
+    <div className="relative overflow-hidden rounded-lg border border-primary/30 bg-black/50 aspect-video">
+      <video ref={videoRef} autoPlay playsInline className="h-full w-full object-contain" />
+      <span className="absolute bottom-2 left-2 rounded bg-black/60 px-2 py-1 text-xs text-white">
+        {name} is sharing their screen
+      </span>
+    </div>
+  );
+}
+
 function CallRoomInner({ sessionId, token, userName, isStarter, onLeave }: CallRoomViewProps) {
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const [mediaError, setMediaError] = useState<string | null>(null);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [isTogglingScreenShare, setIsTogglingScreenShare] = useState(false);
   const hmsActions = useHMSActions();
   const isConnected = useHMSStore(selectIsConnectedToRoom);
   const peers = useHMSStore(selectPeers);
-  const { isLocalAudioEnabled, isLocalVideoEnabled, toggleAudio, toggleVideo } = useAVToggle();
+  const {
+    isLocalAudioEnabled,
+    isLocalVideoEnabled,
+    toggleAudio,
+    toggleVideo,
+  } = useAVToggle((error) => {
+    console.error("Call media control failed:", error);
+    if (error.message.includes("Device in use") || error.name === "DeviceInUse") {
+      setMediaError("Your camera is being used by another app or browser tab. Close it there, then try again.");
+      return;
+    }
+    setMediaError("Your camera could not be accessed. Check browser permissions and try again.");
+  });
+  const {
+    amIScreenSharing,
+    toggleScreenShare,
+    screenShareVideoTrackId,
+    screenSharingPeerName,
+  } = useScreenShare((error) => {
+    console.warn("Screen sharing was not started:", error);
+    setShareError("Screen sharing was not started. Allow screen capture in your browser and try again.");
+  });
   const { mutate: endCallMutation, isPending: isEnding } = useEndCall();
 
-  const [joinError, setJoinError] = useState<string | null>(null);
   const hasJoinedRef = useRef(false);
 
   useEffect(() => {
@@ -116,6 +154,20 @@ function CallRoomInner({ sessionId, token, userName, isStarter, onLeave }: CallR
     );
   }
 
+  const handleScreenShare = async () => {
+    if (!toggleScreenShare) return;
+    try {
+      setShareError(null);
+      setIsTogglingScreenShare(true);
+      await toggleScreenShare();
+    } catch (error) {
+      console.warn("Screen sharing was not started:", error);
+      setShareError("Screen sharing was not started. Allow screen capture in your browser and try again.");
+    } finally {
+      setIsTogglingScreenShare(false);
+    }
+  };
+
   const peerCount = peers.length;
   // Grid columns scale with participant count so tiles grow/shrink to fill
   // the available space instead of staying pinned to a fixed 2-col layout.
@@ -135,6 +187,21 @@ function CallRoomInner({ sessionId, token, userName, isStarter, onLeave }: CallR
       <div
         className={`flex-1 overflow-y-auto p-4 grid ${gridColsClass} auto-rows-fr gap-3 place-content-center`}
       >
+        {mediaError && (
+          <p className="col-span-full rounded-md border border-error/30 bg-error/10 px-3 py-2 text-center text-xs text-error" role="alert">
+            {mediaError}
+          </p>
+        )}
+        {shareError && (
+          <p className="col-span-full rounded-md border border-error/30 bg-error/10 px-3 py-2 text-center text-xs text-error" role="alert">
+            {shareError}
+          </p>
+        )}
+        {screenShareVideoTrackId && screenSharingPeerName && (
+          <div className="col-span-full">
+            <ScreenShareTile trackId={screenShareVideoTrackId} name={screenSharingPeerName} />
+          </div>
+        )}
         {peers.map((peer) => (
           <PeerTile key={peer.id} peer={peer} />
         ))}
@@ -149,6 +216,20 @@ function CallRoomInner({ sessionId, token, userName, isStarter, onLeave }: CallR
           className="p-3 rounded-full bg-white/10 text-white hover:bg-white/20 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLocalAudioEnabled ? <Mic size={18} /> : <MicOff size={18} />}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleScreenShare}
+          disabled={!toggleScreenShare || isTogglingScreenShare}
+          title={amIScreenSharing ? "Stop sharing screen" : "Share screen"}
+          className={`p-3 rounded-full transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+            amIScreenSharing
+              ? "bg-primary text-on-primary hover:bg-primary-hover"
+              : "bg-white/10 text-white hover:bg-white/20"
+          }`}
+        >
+          {amIScreenSharing ? <MonitorStop size={18} /> : <MonitorUp size={18} />}
         </button>
 
         <button

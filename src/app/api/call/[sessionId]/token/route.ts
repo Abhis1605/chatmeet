@@ -36,6 +36,26 @@ export async function POST(
             return Response.json({ error: 'Call has ended' }, { status: 409 })
         }
 
+        await prisma.callParticipant.upsert({
+            where: {
+                callSessionId_userId: {
+                    callSessionId: callSession.id,
+                    userId: session.user.id,
+                },
+            },
+            create: {
+                callSessionId: callSession.id,
+                userId: session.user.id,
+                status: 'JOINED',
+                joinedAt: new Date(),
+            },
+            update: {
+                status: 'JOINED',
+                joinedAt: new Date(),
+                leftAt: null,
+            },
+        })
+
         const userName = session.user.name || session.user.email || 'Guest'
 
         const token = await generateHmsAuthToken({

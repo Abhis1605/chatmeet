@@ -78,26 +78,22 @@ export async function POST(req: Request) {
             return created
         })
 
-        // For GROUP calls: emit call-incoming to all other members so they see the ring UI.
-        // Personal calls (ONE_TO_ONE) go through the existing Meet tab flow — no separate signal needed.
-        if (callType === 'GROUP') {
-            const otherUserIds = allMembers
-                .map((m) => m.userId)
-                .filter((uid) => uid !== session.user.id)
+        const otherUserIds = allMembers
+            .map((m) => m.userId)
+            .filter((uid) => uid !== session.user.id)
 
-            await notifySocket(
-                'call-incoming',
-                {
-                    sessionId: callSession.id,
-                    chatId,
-                    hmsRoomId: callSession.hmsRoomId,
-                    type: callType,
-                    startedById: session.user.id,
-                    startedByName: session.user.name || session.user.email,
-                },
-                { userIds: otherUserIds }
-            )
-        }
+        await notifySocket(
+            'call-incoming',
+            {
+                sessionId: callSession.id,
+                chatId,
+                hmsRoomId: callSession.hmsRoomId,
+                type: callType,
+                startedById: session.user.id,
+                startedByName: session.user.name || session.user.email,
+            },
+            { userIds: otherUserIds }
+        )
 
         return Response.json({
             callSessionId: callSession.id,

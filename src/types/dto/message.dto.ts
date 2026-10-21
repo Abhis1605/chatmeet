@@ -15,6 +15,7 @@ export interface MessageDto {
   chatId: string;
   sender: UserDto;
   createdAt: string;
+  updatedAt?: string;
 }
 
 // Shape emitted by socket 'send-message' event
