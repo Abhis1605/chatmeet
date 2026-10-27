@@ -12,11 +12,11 @@ dotenv.config()
 
 const JWT_SECRET = process.env.NEXTAUTH_SECRET
 const NOTIFY_SECRET = process.env.SOCKET_NOTIFY_SECRET
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:3000'
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN
 const PORT = Number(process.env.SOCKET_PORT || process.env.PORT || 5000)
 
-if (!JWT_SECRET || !NOTIFY_SECRET) {
-    throw new Error('NEXTAUTH_SECRET and SOCKET_NOTIFY_SECRET must be set for the socket server')
+if (!JWT_SECRET || !NOTIFY_SECRET || !CLIENT_ORIGIN) {
+    throw new Error('NEXTAUTH_SECRET, SOCKET_NOTIFY_SECRET, and CLIENT_ORIGIN must be set for the socket server')
 }
 
 interface SocketUser {
@@ -51,10 +51,11 @@ const setUserPresence = async (userId: string) => {
     })
     if (!prefs) return
 
-    // Invisible hides both; otherwise each toggle hides its own part
+    // Invisible and Do Not Disturb hide presence. Away remains visible as online.
     const invisible = prefs.statusPreference === 'INVISIBLE'
-    const isOnline = connected && !invisible && prefs.showOnlineStatus
-    const lastSeen = !connected && !invisible && prefs.showLastSeen ? new Date() : null
+    const suppressPresence = invisible || prefs.statusPreference === 'DND'
+    const isOnline = connected && !suppressPresence && prefs.showOnlineStatus
+    const lastSeen = !connected && !suppressPresence && prefs.showLastSeen ? new Date() : null
 
     await prisma.user.update({
         where: { id: userId },
@@ -193,11 +194,44 @@ io.on('connection', (socket: CustomSocket) => {
         sockets.add(socket.id)
         activeConnections.set(socket.user.id, sockets)
 
-        if (sockets.size === 1) {
-            setUserPresence(socket.user.id).catch((error) => {
-                console.error('Failed to mark user online:', error)
+        setUserPresence(socket.user.id).catch((error) => {
+            console.error('Failed to refresh user presence on connect:', error)
+        })
+
+        // Send current public presence for existing chat and room members to
+        // this socket so its client cache starts from live values after login.
+        prisma.chatMember.findMany({
+            where: { userId: socket.user.id },
+            select: {
+                chat: {
+                    select: {
+                        members: { select: { userId: true } },
+                    },
+                },
+            },
+        }).then(async (memberships) => {
+            const otherUserIds = [...new Set(
+                memberships.flatMap((membership) => membership.chat.members.map((member) => member.userId))
+                    .filter((userId) => userId !== socket.user?.id)
+            )]
+            if (!otherUserIds.length) return
+
+            await Promise.all(otherUserIds.map((userId) => setUserPresence(userId)))
+
+            const users = await prisma.user.findMany({
+                where: { id: { in: otherUserIds } },
+                select: { id: true, isOnline: true, lastSeen: true },
             })
-        }
+            for (const user of users) {
+                socket.emit('user-presence-changed', {
+                    userId: user.id,
+                    isOnline: user.isOnline,
+                    lastSeen: formatLastSeen(user.lastSeen),
+                })
+            }
+        }).catch((error) => {
+            console.error('Failed to send initial user presence:', error)
+        })
     }
 
     socket.on('join-chat', async (chatId: string) => {
@@ -285,16 +319,18 @@ io.on('connection', (socket: CustomSocket) => {
     })
 
     // Only sockets that passed the join-chat membership check can signal typing
-    socket.on('typing', (chatId) => {
-        if (!socket.rooms.has(chatId)) return
+    socket.on('typing', async (chatId: unknown) => {
+        if (typeof chatId !== 'string' || !socket.user?.id || !socket.rooms.has(chatId)) return
+        const prefs = await prisma.user.findUnique({ where: { id: socket.user.id }, select: { showTypingIndicator: true } })
+        if (!prefs?.showTypingIndicator) return
         socket.to(chatId).emit('user-typing', {
             userId: socket.user?.id,
             name: socket.user?.name
         })
     })
 
-    socket.on('stop-typing', (chatId) => {
-        if (!socket.rooms.has(chatId)) return
+    socket.on('stop-typing', (chatId: unknown) => {
+        if (typeof chatId !== 'string' || !socket.rooms.has(chatId)) return
         socket.to(chatId).emit('user-stop-typing', {
             userId: socket.user?.id
         })

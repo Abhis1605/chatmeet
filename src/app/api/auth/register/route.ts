@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { sendOTPEmail } from "@/lib/resend";
 import bcrypt from "bcrypt";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { randomInt } from "crypto";
 
 export async function POST(req: Request) {
   // 5 sign-ups per IP per hour
@@ -37,7 +38,7 @@ export async function POST(req: Request) {
 
   const hashed = await bcrypt.hash(password, 10);
 
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otp = randomInt(100000, 1000000).toString();
 
   const otpExpiry = new Date(Date.now() + 60 * 1000);
 

@@ -16,6 +16,7 @@ import ChatInput from "@/components/chat/ChatInput";
 import RoomMembersModal from "./RoomMembersModal";
 import RoomCodeShareSheet from "./RoomCodeShareSheet";
 import type { RoomDto } from "@/types/dto/room.dto";
+import { useSettings } from "@/hooks/queries/use-settings";
 
 export default function RoomChatWindow() {
   const { activeRoomChatId } = useChatUIStore();
@@ -28,6 +29,7 @@ export default function RoomChatWindow() {
   );
 
   const { socket } = useSocketContext();
+  const { data: settings } = useSettings();
   const {
     data: messagesData,
     fetchNextPage,
@@ -147,7 +149,11 @@ export default function RoomChatWindow() {
       return;
     }
 
-    socket.emit("typing", selectedRoom.id);
+    if (settings?.showTypingIndicator === false) {
+      socket.emit("stop-typing", selectedRoom.id);
+    } else {
+      socket.emit("typing", selectedRoom.id);
+    }
 
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);

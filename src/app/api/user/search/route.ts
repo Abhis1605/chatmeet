@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '../../auth/[...nextauth]/route'
 import { rateLimit } from '@/lib/rate-limit'
+import { publicUserSelect } from '@/lib/public-user'
 
 export async function GET(req: Request){
     try {
@@ -28,16 +29,7 @@ export async function GET(req: Request){
                     mode: 'insensitive'
                 },
             },
-            select: {
-                id: true,
-                name: true,
-                email: true,
-                image: true,
-                profilePhotoType: true,
-                avatarFilename: true,
-                isOnline: true,
-                lastSeen: true
-            },
+            select: publicUserSelect,
             take: 5
         })
 

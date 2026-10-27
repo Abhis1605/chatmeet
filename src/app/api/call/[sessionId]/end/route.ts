@@ -26,6 +26,14 @@ export async function POST(
             return Response.json({ error: 'Call not found' }, { status: 404 })
         }
 
+        const member = await prisma.chatMember.findFirst({
+            where: { chatId: callSession.chatId, userId: session.user.id },
+            select: { id: true },
+        })
+        if (!member) {
+            return Response.json({ error: 'Forbidden' }, { status: 403 })
+        }
+
         if (callSession.startedById !== session.user.id) {
             return Response.json({ error: 'Only the call starter can end it' }, { status: 403 })
         }

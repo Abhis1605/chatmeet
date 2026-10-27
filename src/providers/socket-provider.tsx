@@ -203,6 +203,17 @@ export default function SocketProvider({
       isOnline: boolean;
       lastSeen: string | null;
     }) => {
+      queryClient.setQueryData<any>(queryKeys.profile.me, (prev) => {
+        if (!prev) return prev;
+        const profile = prev.profile ?? prev;
+        const updatedProfile = {
+          ...profile,
+          isOnline: data.isOnline,
+          lastSeen: data.lastSeen,
+        };
+        return prev.profile ? { ...prev, profile: updatedProfile } : updatedProfile;
+      });
+
       for (const type of ["personal", "group"]) {
         queryClient.setQueryData<ChatDto[]>(
           queryKeys.chats.list(type),
@@ -226,6 +237,25 @@ export default function SocketProvider({
           }
         );
       }
+
+      queryClient.setQueryData<RoomDto[]>(queryKeys.chats.room(), (prev) => {
+        if (!prev) return prev;
+        return prev.map((room) => ({
+          ...room,
+          members: room.members.map((member) =>
+            member.user.id === data.userId
+              ? {
+                  ...member,
+                  user: {
+                    ...member.user,
+                    isOnline: data.isOnline,
+                    lastSeen: data.lastSeen,
+                  },
+                }
+              : member
+          ),
+        }));
+      });
     };
 
     // ── chat-read: another member read the chat → update "Seen" ─────────
@@ -345,6 +375,10 @@ export default function SocketProvider({
       type: string;
       startedByName: string;
     }) => {
+      const mySettings = queryClient.getQueryData<{ notificationsMuted?: boolean; notificationToast?: boolean }>(
+        queryKeys.settings.me
+      );
+      if (mySettings?.notificationsMuted || mySettings?.notificationToast === false) return;
       queryClient.invalidateQueries({ queryKey: queryKeys.calls.active(data.chatId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.calls.history });
 
@@ -417,6 +451,9 @@ export default function SocketProvider({
       socket.off("call-incoming", handleCallIncoming);
       socket.off("call-ended", handleCallEnded);
       socket.off("session-revoked", handleSessionRevoked);
+      // Session changes (including logout) must close the transport so the
+      // server removes this connection and broadcasts the new presence.
+      socket.disconnect();
     };
   }, [status, accessToken, sessionUserId, queryClient, setConnected]);
 
