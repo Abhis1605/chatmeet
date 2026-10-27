@@ -14,6 +14,8 @@ interface Props {
   onDeleteMessage?: (message: any) => void;
   // 1:1 chats: when the other person last read the chat (null = receipts hidden)
   otherReadAt?: string | null;
+  groupSeenByCount?: number;
+  groupRecipientCount?: number;
 }
 
 export default function MessageList({
@@ -26,13 +28,20 @@ export default function MessageList({
   onEditMessage,
   onDeleteMessage,
   otherReadAt = null,
+  groupSeenByCount,
+  groupRecipientCount = 0,
 }: Props) {
   // Read status is shown once, under my most recent message
   const myLastMessage = [...messages].reverse().find(
     (message) => message.senderId === session?.user?.id
   );
-  const myLastStatus =
-    myLastMessage && otherReadAt
+  const myLastStatus = isGroup
+    ? myLastMessage && groupSeenByCount !== undefined
+      ? groupSeenByCount > 0
+        ? `Seen by ${groupSeenByCount}${groupRecipientCount > 0 && groupSeenByCount === groupRecipientCount ? " (everyone)" : ""}`
+        : "Sent"
+      : null
+    : myLastMessage && otherReadAt
       ? new Date(otherReadAt) >= new Date(myLastMessage.createdAt)
         ? "Seen"
         : "Sent"

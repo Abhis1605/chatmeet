@@ -17,6 +17,7 @@ import { useSendMessage } from "@/hooks/mutations/use-send-message";
 import { useMarkAsRead } from "@/hooks/mutations/use-mark-as-read";
 import { deleteMessage, updateMessage } from "@/services/message.service";
 import { toast } from "sonner";
+import { useSettings } from "@/hooks/queries/use-settings";
 
 export default function ChatWindow() {
   const { activeChatId, activeTab } = useChatUIStore();
@@ -29,6 +30,7 @@ export default function ChatWindow() {
   );
 
   const { socket } = useSocketContext();
+  const { data: settings } = useSettings();
   const {
     data: messagesData,
     fetchNextPage,
@@ -69,6 +71,16 @@ export default function ChatWindow() {
     : selectedChat?.members?.find(
         (member: any) => member.user.id !== session?.user?.id,
       )?.lastReadAt ?? null;
+  const myLastMessage = [...messages].reverse().find(
+    (message) => message.senderId === session?.user?.id
+  );
+  const groupSeenByCount = selectedChat?.isGroup && myLastMessage
+    ? selectedChat.members.filter((member) =>
+        member.userId !== session?.user?.id &&
+        member.lastReadAt &&
+        new Date(member.lastReadAt) >= new Date(myLastMessage.createdAt)
+      ).length
+    : undefined;
 
   const currentMember = selectedChat?.members?.find(
     (member: any) =>
@@ -223,7 +235,11 @@ export default function ChatWindow() {
       return;
     }
 
-    socket.emit("typing", selectedChat.id);
+    if (settings?.showTypingIndicator === false) {
+      socket.emit("stop-typing", selectedChat.id);
+    } else {
+      socket.emit("typing", selectedChat.id);
+    }
 
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
@@ -270,6 +286,8 @@ export default function ChatWindow() {
         session={session}
         isGroup={Boolean(selectedChat?.isGroup)}
         otherReadAt={otherReadAt}
+        groupSeenByCount={settings?.readReceiptsEnabled === false ? undefined : groupSeenByCount}
+        groupRecipientCount={selectedChat?.isGroup ? Math.max(0, selectedChat.members.length - 1) : undefined}
         onLoadMore={fetchNextPage}
         hasMore={Boolean(hasNextPage)}
         isLoadingMore={isFetchingNextPage}

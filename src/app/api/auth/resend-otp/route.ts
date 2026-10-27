@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { sendOTPEmail } from "@/lib/resend";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { randomInt } from "crypto";
 
 export async function POST(req: Request) {
   const { email } = await req.json();
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
     return Response.json({ error: "User not found" });
   }
 
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otp = randomInt(100000, 1000000).toString();
 
   const otpExpiry = new Date(Date.now() + 60 * 1000);
 

@@ -1,6 +1,3 @@
-const SOCKET_NOTIFY_URL =
-  process.env.SOCKET_NOTIFY_URL ?? "http://localhost:5000/notify";
-
 type NotifyOptions = {
   userIds?: string[];
   chatId?: string;
@@ -13,12 +10,19 @@ export async function notifySocket(
   payload: unknown,
   options: NotifyOptions = {}
 ) {
+  const socketNotifyUrl = process.env.SOCKET_NOTIFY_URL;
+  const socketNotifySecret = process.env.SOCKET_NOTIFY_SECRET;
+  if (!socketNotifyUrl || !socketNotifySecret) {
+    console.error("[socket-notify] SOCKET_NOTIFY_URL and SOCKET_NOTIFY_SECRET must be set");
+    return;
+  }
+
   try {
-    await fetch(SOCKET_NOTIFY_URL, {
+    await fetch(socketNotifyUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-notify-secret": process.env.SOCKET_NOTIFY_SECRET ?? "",
+        "x-notify-secret": socketNotifySecret,
       },
       body: JSON.stringify({
         event,
