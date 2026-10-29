@@ -13,11 +13,13 @@ interface ChatUIState {
   activeRoomChatId: string | null;
   activeTab: "personal" | "group" | "room" | "video" | "profile" | "settings";
   sidebarCollapsed: boolean;
+  mobilePanel: "list" | "detail";
 
   setActiveChatId: (id: string | null) => void;
   setActiveRoomChatId: (id: string | null) => void;
   setActiveTab: (tab: "personal" | "group" | "room" | "video" | "profile" | "settings") => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
+  setMobilePanel: (panel: "list" | "detail") => void;
 }
 
 export const useChatUIStore = create<ChatUIState>((set) => ({
@@ -25,9 +27,11 @@ export const useChatUIStore = create<ChatUIState>((set) => ({
   activeRoomChatId: null,
   activeTab: "personal",
   sidebarCollapsed: true,
+  mobilePanel: "list",
 
   setActiveChatId: (id) => set({ activeChatId: id }),
   setActiveRoomChatId: (id) => set({ activeRoomChatId: id }),
   setActiveTab: (tab) => set({ activeTab: tab }),
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
+  setMobilePanel: (mobilePanel) => set({ mobilePanel }),
 }));

@@ -44,7 +44,7 @@ export default function RoomCodeShareSheet({
 
   return (
     <div className="fixed inset-0 z-100 bg-black/60 backdrop-blur-sm flex items-start justify-center pt-20">
-      <div className="w-125 bg-surface rounded-xl shadow-2xl border border-border overflow-hidden">
+      <div className="max-h-[90dvh] w-[calc(100vw-2rem)] max-w-125 overflow-y-auto rounded-xl border border-border bg-surface shadow-2xl">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <p className="text-foreground text-sm font-semibold">Share Room Code</p>
           <button

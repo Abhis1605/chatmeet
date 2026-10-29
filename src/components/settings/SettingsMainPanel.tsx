@@ -31,18 +31,18 @@ export default function SettingsMainPanel() {
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="border-b border-border bg-surface px-8 py-6">
+    <div className="flex h-full min-w-0 flex-1 flex-col">
+      <div className="border-b border-border bg-surface px-4 py-5 sm:px-8 sm:py-6">
         <h2 className="text-foreground text-lg font-semibold">Settings</h2>
         <p className="text-muted text-sm">Manage how ChatMeet looks and behaves for you</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-8 sm:py-6">
+        <div className="grid max-w-5xl grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
           {/* Theme */}
           <section className="rounded-xl border border-border bg-surface p-5 space-y-4">
             <h3 className="text-sm font-semibold text-foreground">Theme</h3>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-3">
               {THEME_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}

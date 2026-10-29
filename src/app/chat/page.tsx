@@ -17,7 +17,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function ChatPage() {
-  const { activeTab, activeChatId, activeRoomChatId } = useChatUIStore();
+  const { activeTab, activeChatId, activeRoomChatId, mobilePanel, setMobilePanel } = useChatUIStore();
   const { status } = useSession();
   const { handleLogoutClick } = useLogout();
   const router = useRouter();
@@ -36,18 +36,24 @@ export default function ChatPage() {
     );
   }
 
+  const hasDetail = activeTab === "room" ? Boolean(activeRoomChatId) : Boolean(activeChatId);
+  const showDetail = mobilePanel === "detail" && hasDetail;
+
   return (
-    <div className="flex h-screen bg-background text-foreground">
+    <div className="flex h-dvh w-full min-w-0 overflow-hidden bg-background pb-16 pt-14 text-foreground lg:pb-0 lg:pt-0">
+
       <Sidebar />
 
       {activeTab === "room" ? (
         <>
-          <RoomListPanel />
-          <div className="flex-1">
+          <div className={`${showDetail ? "hidden" : "flex"} h-full w-full shrink-0 lg:flex lg:w-[320px]`}>
+            <RoomListPanel />
+          </div>
+          <div className={`${showDetail ? "flex" : "hidden"} h-full min-w-0 flex-1 flex-col lg:flex`}>
             {activeRoomChatId ? (
-              <RoomChatWindow />
+              <RoomChatWindow onBack={() => setMobilePanel("list")} />
             ) : (
-              <div className="h-full flex items-center justify-center text-muted">
+              <div className="flex h-full w-full items-center justify-center px-4 text-center text-muted">
                 Select a room to start messaging
               </div>
             )}
@@ -55,27 +61,31 @@ export default function ChatPage() {
         </>
       ) : activeTab === "video" ? (
         <>
-          <VideoCallListPanel />
-          <div className="flex-1">
+          <div className={`${showDetail ? "hidden" : "flex"} h-full w-full shrink-0 lg:flex lg:w-[320px]`}>
+            <VideoCallListPanel />
+          </div>
+          <div className={`${showDetail ? "flex" : "hidden"} h-full min-w-0 flex-1 flex-col lg:flex`}>
             <VideoCallMainPanel />
           </div>
         </>
       ) : activeTab === "profile" ? (
-        <div className="flex-1">
+        <div className="h-full min-w-0 flex-1">
           <ProfileMainPanel onLogout={handleLogoutClick} />
         </div>
       ) : activeTab === "settings" ? (
-        <div className="flex-1">
+        <div className="h-full min-w-0 flex-1">
           <SettingsMainPanel />
         </div>
       ) : (
         <>
-          <ChatListPanel type={activeTab} />
-          <div className="flex-1">
+          <div className={`${showDetail ? "hidden" : "flex"} h-full w-full shrink-0 lg:flex lg:w-[320px]`}>
+            <ChatListPanel type={activeTab} />
+          </div>
+          <div className={`${showDetail ? "flex" : "hidden"} h-full min-w-0 flex-1 flex-col lg:flex`}>
             {activeChatId ? (
-              <ChatWindow />
+              <ChatWindow onBack={() => setMobilePanel("list")} />
             ) : (
-              <div className="h-full flex items-center justify-center text-muted">
+              <div className="flex h-full w-full items-center justify-center px-4 text-center text-muted">
                 Select a chat to start messaging
               </div>
             )}

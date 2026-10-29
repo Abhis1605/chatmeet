@@ -10,7 +10,7 @@ import PendingInvitesList from "./PendingInvitesList";
 import Spinner from "../Spinner";
 
 export default function RoomListPanel() {
-  const { activeRoomChatId, setActiveRoomChatId } = useChatUIStore();
+  const { activeRoomChatId, setActiveRoomChatId, setMobilePanel } = useChatUIStore();
   const { data: rooms = [], isLoading } = useRooms();
 
   const [openCreate, setOpenCreate] = useState(false);
@@ -36,7 +36,7 @@ export default function RoomListPanel() {
   };
 
   return (
-    <div className="w-[320px] border-r border-border flex flex-col">
+    <div className="flex h-full w-full min-w-0 flex-col border-r border-border md:w-full">
       <div className="p-3 border-b border-border flex justify-between items-center">
         <h2 className="text-foreground font-semibold">Rooms</h2>
         <div className="flex gap-1">
@@ -93,7 +93,10 @@ export default function RoomListPanel() {
             return (
               <div
                 key={room.id}
-                onClick={() => setActiveRoomChatId(room.id)}
+                onClick={() => {
+                  setActiveRoomChatId(room.id);
+                  setMobilePanel("detail");
+                }}
                 className={`p-3 flex items-center gap-3 cursor-pointer transition ${
                   activeRoomChatId === room.id ? "bg-surface-soft" : "hover:bg-surface-soft"
                 }`}

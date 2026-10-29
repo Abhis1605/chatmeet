@@ -13,7 +13,7 @@ import { getAvatarSrc } from "@/lib/avatars";
 export default function ChatListPanel({ type }: any) {
   const { data: session } = useSession();
 
-  const { setActiveChatId, activeChatId } = useChatUIStore();
+  const { setActiveChatId, activeChatId, setMobilePanel } = useChatUIStore();
   const { data: chats, isLoading } = useChats(type);
 
   const [openSearch, setOpenSearch] = useState(false);
@@ -49,7 +49,7 @@ export default function ChatListPanel({ type }: any) {
   };
 
   return (
-    <div className="w-[320px] border-r border-border flex flex-col">
+    <div className="flex h-full w-full min-w-0 flex-col border-r border-border md:w-full">
       {/* HEADER */}
       <div className="p-3 border-b border-border flex justify-between items-center">
         <h2 className="text-foreground font-semibold capitalize">{type} chats</h2>
@@ -116,7 +116,10 @@ export default function ChatListPanel({ type }: any) {
             return (
               <div
                 key={chat.id || index}
-                onClick={() => setActiveChatId(chat.id)}
+                onClick={() => {
+                  setActiveChatId(chat.id);
+                  setMobilePanel("detail");
+                }}
                 className={`p-3 flex items-center gap-3 cursor-pointer transition ${activeChatId === chat.id ? "bg-primary-soft" : "hover:bg-surface-soft"
                   }`}
               >

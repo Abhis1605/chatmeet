@@ -103,7 +103,7 @@ export default function MessageList({
   return (
     <div
       ref={scrollContainerRef}
-      className="chat-scroll flex-1 flex flex-col overflow-y-auto p-5 space-y-4"
+      className="chat-scroll flex min-h-0 flex-1 flex-col space-y-4 overflow-y-auto p-3 sm:p-5"
     >
       <div ref={topSentinelRef} />
       {isLoadingMore && (

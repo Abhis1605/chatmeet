@@ -67,9 +67,9 @@ export default function ChatSearchCommand({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-100 bg-black/60 backdrop-blur-sm flex items-start justify-center pt-24">
+    <div className="fixed inset-0 z-100 flex items-start justify-center bg-black/60 px-4 pt-16 backdrop-blur-sm sm:pt-24">
 
-      <div className="w-125 bg-surface rounded-xl shadow-2xl border border-border overflow-hidden">
+      <div className="max-h-[80dvh] w-full max-w-125 overflow-y-auto rounded-xl border border-border bg-surface shadow-2xl">
 
         {/* HEADER */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">

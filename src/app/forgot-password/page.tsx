@@ -90,12 +90,12 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="flex min-h-dvh items-center justify-center overflow-y-auto bg-background px-4 py-6 sm:py-8">
       <AuthCard>
         {/* Logo */}
         <div className="text-center mb-3">
           <div className="inline-block">
-            <img src="/chatmeet-logo.png" className="h-30 w-60 object-contain" alt="ChatMeet logo" />
+            <img src="/chatmeet-logo.png" className="h-24 w-48 object-contain sm:h-30 sm:w-60" alt="ChatMeet logo" />
           </div>
           <p className="text-sm text-muted">
             {step === "email"
