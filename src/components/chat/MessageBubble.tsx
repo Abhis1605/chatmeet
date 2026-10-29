@@ -17,7 +17,7 @@ export default function MessageBubble({ message, isMe, showSender = false, onEdi
         className="group relative"
       >
       <div
-        className={`rounded-lg px-3 py-2 max-w-[320px] border shadow-sm ${
+        className={`max-w-[min(320px,80vw)] rounded-lg border px-3 py-2 shadow-sm ${
           isMe
             ? "bg-surface-soft border-primary/30 rounded-br-none"
             : "bg-surface border-border rounded-bl-none"
@@ -54,7 +54,7 @@ export default function MessageBubble({ message, isMe, showSender = false, onEdi
           <img
             src={message.fileUrl}
             alt={message.fileName}
-            className="rounded-xl max-w-55 md:max-w-60 object-cover cursor-pointer transition hover:opacity-95"
+            className="max-w-full rounded-xl object-cover transition hover:opacity-95"
           />
         )}
 

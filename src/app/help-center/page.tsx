@@ -124,7 +124,7 @@ export default function HelpCenterPage() {
                 ))}
               </ul>
 
-              <div className="mt-36 grid max-w-xl gap-4 sm:grid-cols-2">
+              <div className="mt-10 lg:mt-36 grid max-w-xl gap-4 sm:grid-cols-2">
                 <div className="rounded-(--radius) border border-border bg-surface p-5 shadow-sm">
                   <h2 className="font-heading text-base font-semibold text-foreground">General communication</h2>
                   <p className="mt-2 text-sm leading-relaxed text-muted">For general questions, send us an email and we&apos;ll get back to you.</p>

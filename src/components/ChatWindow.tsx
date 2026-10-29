@@ -19,7 +19,7 @@ import { deleteMessage, updateMessage } from "@/services/message.service";
 import { toast } from "sonner";
 import { useSettings } from "@/hooks/queries/use-settings";
 
-export default function ChatWindow() {
+export default function ChatWindow({ onBack }: { onBack?: () => void }) {
   const { activeChatId, activeTab } = useChatUIStore();
   const { data: session } = useSession();
 
@@ -272,13 +272,14 @@ export default function ChatWindow() {
         : "Offline";
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex h-full min-w-0 flex-1 flex-col">
       <ChatHeader
         otherUser={otherUser}
         presenceLabel={presenceLabel}
         isTyping={isTyping}
         chat={selectedChat}
         onManageGroup={() => setOpenGroupMembers(true)}
+        onBack={onBack}
       />
 
       <MessageList

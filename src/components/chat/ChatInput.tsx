@@ -65,7 +65,7 @@ export default function ChatInput({
         }}
       />
 
-      <div className="flex items-center gap-2 p-3">
+      <div className="flex items-center gap-1 p-2 sm:gap-2 sm:p-3">
         {/* Emoji */}
         <button
           type="button"
@@ -100,7 +100,7 @@ export default function ChatInput({
             }
           }}
           placeholder={placeholder}
-          className="flex-1 rounded-full bg-surface-soft px-5 py-3 text-foreground outline-none border border-border focus:border-primary disabled:cursor-not-allowed disabled:text-muted"
+          className="min-w-0 flex-1 rounded-full bg-surface-soft px-3 py-3 text-foreground outline-none border border-border focus:border-primary disabled:cursor-not-allowed disabled:text-muted sm:px-5"
         />
 
         {/* Send */}

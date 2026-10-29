@@ -203,7 +203,7 @@ export default function SocketProvider({
       isOnline: boolean;
       lastSeen: string | null;
     }) => {
-      queryClient.setQueryData<any>(queryKeys.profile.me, (prev) => {
+      queryClient.setQueryData<any>(queryKeys.profile.me, (prev: any) => {
         if (!prev) return prev;
         const profile = prev.profile ?? prev;
         const updatedProfile = {

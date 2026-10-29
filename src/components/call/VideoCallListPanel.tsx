@@ -31,7 +31,7 @@ const formatStartedAt = (date: string) =>
  */
 export default function VideoCallListPanel() {
   const { data: session } = useSession();
-  const { setActiveChatId, activeChatId } = useChatUIStore();
+  const { setActiveChatId, activeChatId, setMobilePanel } = useChatUIStore();
   const [subTab, setSubTab] = useState<"personal" | "history">("personal");
   const [expandedCallId, setExpandedCallId] = useState<string | null>(null);
 
@@ -51,7 +51,7 @@ export default function VideoCallListPanel() {
   );
 
   return (
-    <div className="w-[320px] border-r border-border flex flex-col">
+    <div className="flex h-full w-full min-w-0 flex-col border-r border-border md:w-full">
       {/* HEADER */}
       <div className="p-3 border-b border-border">
         <h2 className="text-foreground font-semibold mb-3">Video Call</h2>
@@ -115,7 +115,10 @@ export default function VideoCallListPanel() {
                 return (
                   <div
                     key={chat.id}
-                    onClick={() => setActiveChatId(chat.id)}
+                    onClick={() => {
+                      setActiveChatId(chat.id);
+                      setMobilePanel("detail");
+                    }}
                     className={`p-3 flex items-center gap-3 cursor-pointer transition ${
                       activeChatId === chat.id ? "bg-surface-soft" : "hover:bg-surface-soft"
                     }`}

@@ -112,9 +112,9 @@ export default function ProfileMainPanel({ onLogout }: ProfileMainPanelProps) {
   const currentStatus = STATUS_OPTIONS.find((s) => s.value === profile.statusPreference);
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex h-full min-w-0 flex-1 flex-col">
       {/* Header banner */}
-      <div className="border-b border-border bg-surface px-8 py-6 flex items-center gap-5">
+      <div className="flex flex-wrap items-center gap-4 border-b border-border bg-surface px-4 py-5 sm:gap-5 sm:px-8 sm:py-6">
         <div className="relative shrink-0">
           <img
             src={avatarSrc}
@@ -146,12 +146,12 @@ export default function ProfileMainPanel({ onLogout }: ProfileMainPanelProps) {
           )}
         </div>
 
-        <div className="flex gap-2 shrink-0">
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading || saving}
-            className="text-xs px-3 py-1.5 rounded-md border border-border text-foreground hover:bg-surface-soft transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 whitespace-nowrap rounded-md border border-border px-3 py-1.5 text-xs text-foreground transition hover:bg-surface-soft disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
           >
             Upload photo
           </button>
@@ -159,7 +159,7 @@ export default function ProfileMainPanel({ onLogout }: ProfileMainPanelProps) {
             type="button"
             onClick={() => setAvatarPickerOpen((v) => !v)}
             disabled={saving}
-            className="text-xs px-3 py-1.5 rounded-md border border-border text-foreground hover:bg-surface-soft transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 whitespace-nowrap rounded-md border border-border px-3 py-1.5 text-xs text-foreground transition hover:bg-surface-soft disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
           >
             Choose avatar
           </button>
@@ -174,7 +174,7 @@ export default function ProfileMainPanel({ onLogout }: ProfileMainPanelProps) {
       </div>
 
       {avatarPickerOpen && (
-        <div className="px-8 py-4 border-b border-border bg-surface">
+        <div className="border-b border-border bg-surface px-4 py-4 sm:px-8">
           <div className="flex gap-3 flex-wrap max-w-2xl">
             {PRESET_AVATARS.map((filename) => {
               const isSelected =
@@ -203,8 +203,8 @@ export default function ProfileMainPanel({ onLogout }: ProfileMainPanelProps) {
       )}
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-8 sm:py-6">
+        <div className="grid max-w-5xl grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
           {/* Basic info card */}
           <section className="rounded-xl border border-border bg-surface p-5 space-y-4">
             <h3 className="text-sm font-semibold text-foreground">Basic info</h3>

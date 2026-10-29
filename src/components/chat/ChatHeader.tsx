@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Users, Video } from "lucide-react";
+import { ArrowLeft, Users, Video } from "lucide-react";
 import { startCall } from "@/services/call.service";
 import { toast } from "sonner";
 import { getAvatarSrc } from "@/lib/avatars";
@@ -12,6 +12,7 @@ interface ChatHeaderProps {
   isTyping: boolean;
   chat?: any;
   onManageGroup?: () => void;
+  onBack?: () => void;
 }
 
 export default function ChatHeader({
@@ -20,6 +21,7 @@ export default function ChatHeader({
   isTyping,
   chat,
   onManageGroup,
+  onBack,
 }: ChatHeaderProps) {
   const title = chat?.isGroup ? chat.name : otherUser?.name || otherUser?.email;
   const subtitle = chat?.isGroup
@@ -44,7 +46,12 @@ export default function ChatHeader({
   };
 
   return (
-    <div className="h-18 px-5 border-b border-border flex items-center gap-3 bg-surface">
+    <div className="flex min-h-16 items-center gap-2 border-b border-border bg-surface px-3 sm:h-18 sm:gap-3 sm:px-5">
+      {onBack && (
+        <button type="button" onClick={onBack} aria-label="Back to chats" className="rounded-md p-2 text-muted hover:bg-surface-soft hover:text-foreground lg:hidden">
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+      )}
 
       <div className="relative shrink-0">
         <img

@@ -18,7 +18,7 @@ import RoomCodeShareSheet from "./RoomCodeShareSheet";
 import type { RoomDto } from "@/types/dto/room.dto";
 import { useSettings } from "@/hooks/queries/use-settings";
 
-export default function RoomChatWindow() {
+export default function RoomChatWindow({ onBack }: { onBack?: () => void }) {
   const { activeRoomChatId } = useChatUIStore();
   const { data: session } = useSession();
   const { data: rooms = [] } = useRooms();
@@ -177,8 +177,13 @@ export default function RoomChatWindow() {
     : `${selectedRoom.members.length} members`;
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="h-18 px-5 border-b border-border flex items-center gap-3 bg-surface-soft">
+    <div className="flex h-full min-w-0 flex-1 flex-col">
+      <div className="flex min-h-16 items-center gap-2 border-b border-border bg-surface-soft px-3 sm:h-18 sm:gap-3 sm:px-5">
+        {onBack && (
+          <button type="button" onClick={onBack} aria-label="Back to rooms" className="rounded-md p-2 text-muted hover:bg-surface hover:text-foreground lg:hidden">
+            <span aria-hidden="true">←</span>
+          </button>
+        )}
         <img
           src={selectedRoom.image || "/chatmeet-collapsed-logo.png"}
           alt="room"
