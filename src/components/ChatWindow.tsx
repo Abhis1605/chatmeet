@@ -227,8 +227,7 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
     });
   };
 
-  const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+  const handleTyping = (value: string) => {
     setInput(value);
 
     if (!socket || !socket.connected || !selectedChat?.id) {

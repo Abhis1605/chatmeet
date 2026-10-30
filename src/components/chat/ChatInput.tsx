@@ -1,12 +1,13 @@
 "use client";
 
+import EmojiPicker, { type EmojiClickData } from "emoji-picker-react";
 import { Paperclip, SendHorizontal, Smile } from "lucide-react";
 import { useState, useRef } from "react";
 import AttachmentMenu from "./AttachmentMenu";
 
 interface ChatInputProps {
   input: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onChange: (value: string) => void;
   onSend: () => void;
   onUpload: (file: any) => void;
   disabled?: boolean;
@@ -22,6 +23,7 @@ export default function ChatInput({
   placeholder = "Type a message...",
 }: ChatInputProps) {
   const [openAttachment, setOpenAttachment] = useState(false);
+  const [openEmojiPicker, setOpenEmojiPicker] = useState(false);
 
   const imageInputRef = useRef<HTMLInputElement>(null);
 
@@ -65,13 +67,31 @@ export default function ChatInput({
         }}
       />
 
+      {openEmojiPicker && (
+        <div className="absolute bottom-20 left-2 z-50">
+          <EmojiPicker
+            onEmojiClick={(emoji: EmojiClickData) => {
+              onChange(`${input}${emoji.emoji}`);
+              setOpenEmojiPicker(false);
+            }}
+            theme="auto"
+            lazyLoadEmojis
+          />
+        </div>
+      )}
+
       <div className="flex items-center gap-1 p-2 sm:gap-2 sm:p-3">
         {/* Emoji */}
         <button
           type="button"
           title="Emoji"
           aria-label="Open emoji picker"
-          className="p-2 rounded-full hover:bg-surface-soft transition cursor-pointer"
+          disabled={disabled}
+          onClick={() => {
+            setOpenEmojiPicker((open) => !open);
+            setOpenAttachment(false);
+          }}
+          className="p-2 rounded-full hover:bg-surface-soft disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer disabled:cursor-not-allowed"
         >
           <Smile className="w-5 h-5 text-muted" />
         </button>
@@ -92,7 +112,7 @@ export default function ChatInput({
 
         <input
           value={input}
-          onChange={onChange}
+          onChange={(event) => onChange(event.target.value)}
           disabled={disabled}
           onKeyDown={(e) => {
             if (e.key === "Enter") {

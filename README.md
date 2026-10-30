@@ -19,7 +19,7 @@ ChatMeet is a real-time messaging and video-calling app built with Next.js, Pris
    npm install
    ```
 
-2. Copy `.env.example` to `.env` and fill in the values. Keep secrets out of version control. The socket URLs in the example are for local development.
+2. Copy `.env.example` to `.env` (or use `.env.local`) and fill in the values. Keep secrets out of version control. The socket URLs in the example are for local development.
 
 3. Generate the Prisma client and apply the schema:
 
