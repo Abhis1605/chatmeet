@@ -207,13 +207,13 @@ function CallRoomInner({ sessionId, token, userName, isStarter, onLeave }: CallR
         ))}
       </div>
 
-      <div className="flex items-center justify-center gap-3 p-4 border-t border-white/10 flex-wrap">
+      <div className="flex items-center justify-center gap-3 p-4 border-t border-border flex-wrap">
         <button
           type="button"
           onClick={toggleAudio}
           disabled={!toggleAudio}
           title={isLocalAudioEnabled ? "Mute" : "Unmute"}
-          className="p-3 rounded-full bg-white/10 text-white hover:bg-white/20 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-3 rounded-full border border-border bg-surface-soft text-foreground hover:bg-primary-soft transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLocalAudioEnabled ? <Mic size={18} /> : <MicOff size={18} />}
         </button>
@@ -226,7 +226,7 @@ function CallRoomInner({ sessionId, token, userName, isStarter, onLeave }: CallR
           className={`p-3 rounded-full transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
             amIScreenSharing
               ? "bg-primary text-on-primary hover:bg-primary-hover"
-              : "bg-white/10 text-white hover:bg-white/20"
+              : "border border-border bg-surface-soft text-foreground hover:bg-primary-soft"
           }`}
         >
           {amIScreenSharing ? <MonitorStop size={18} /> : <MonitorUp size={18} />}
@@ -237,7 +237,7 @@ function CallRoomInner({ sessionId, token, userName, isStarter, onLeave }: CallR
           onClick={toggleVideo}
           disabled={!toggleVideo}
           title={isLocalVideoEnabled ? "Turn camera off" : "Turn camera on"}
-          className="p-3 rounded-full bg-white/10 text-white hover:bg-white/20 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-3 rounded-full border border-border bg-surface-soft text-foreground hover:bg-primary-soft transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLocalVideoEnabled ? <Video size={18} /> : <VideoOff size={18} />}
         </button>
@@ -246,7 +246,7 @@ function CallRoomInner({ sessionId, token, userName, isStarter, onLeave }: CallR
           type="button"
           onClick={handleLeave}
           title="Leave call"
-          className="p-3 rounded-full bg-white/10 text-white hover:bg-white/20 transition flex items-center gap-2 px-4 cursor-pointer"
+          className="p-3 rounded-full border border-border bg-surface-soft text-foreground hover:bg-primary-soft transition flex items-center gap-2 px-4 cursor-pointer"
         >
           <LogOut size={18} />
           <span className="text-sm">Leave</span>

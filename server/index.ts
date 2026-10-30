@@ -8,7 +8,7 @@ import dotenv from 'dotenv'
 import jwt from 'jsonwebtoken'
 import { canSendGroupMessage } from '../src/lib/groupPermissions'
 
-dotenv.config()
+dotenv.config({ path: ['.env.local', '.env'] })
 
 const JWT_SECRET = process.env.NEXTAUTH_SECRET
 const NOTIFY_SECRET = process.env.SOCKET_NOTIFY_SECRET
