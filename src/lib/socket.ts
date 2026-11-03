@@ -1,20 +1,30 @@
 import { io, Socket } from "socket.io-client";
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL;
-
 let socket: Socket | null = null;
 
 export const connectSocket = (token: string) => {
-  if (!SOCKET_URL) {
-    throw new Error("NEXT_PUBLIC_SOCKET_URL must be set to connect to the socket server");
+  const socketUrl =
+    process.env.NEXT_PUBLIC_SOCKET_URL ||
+    (typeof window !== "undefined" ? window.location.origin : "");
+  const isSameOriginSocket =
+    typeof window !== "undefined" && socketUrl === window.location.origin;
+  const socketPath =
+    process.env.NEXT_PUBLIC_SOCKET_PATH ||
+    (isSameOriginSocket ? "/api/socket-io/socket.io" : "/socket.io");
+
+  if (!socketUrl) {
+    throw new Error(
+      "NEXT_PUBLIC_SOCKET_URL must be set when connecting outside a browser"
+    );
   }
 
   if (!socket) {
-    socket = io(SOCKET_URL, {
+    socket = io(socketUrl, {
       auth: {
         token,
       },
-      transports: ['websocket']
+      path: socketPath,
+      transports: ["websocket"],
     });
   } else {
     // Keep the latest signed token so reconnects don't use an expired one

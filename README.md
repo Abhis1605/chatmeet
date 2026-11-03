@@ -37,7 +37,9 @@ ChatMeet is a real-time messaging and video-calling app built with Next.js, Pris
 
 5. Open [http://localhost:3000](http://localhost:3000).
 
-The Socket.IO server is a separate long-running process. In production, deploy it to a host that supports persistent Node.js services (for example Railway, Render, or Fly.io), and set `NEXT_PUBLIC_SOCKET_URL`, `CLIENT_ORIGIN`, `SOCKET_NOTIFY_URL`, and `SOCKET_NOTIFY_SECRET` to the matching service URLs/origins and shared secret. Configure the same database URL and NextAuth secret for both services. Vercel can host the Next.js app, but not this long-running socket server.
+For local development, the Socket.IO server runs as a separate process. On Vercel, the `api/socket-io.ts` function exposes the same server through Vercel's WebSocket support. Set `NEXT_PUBLIC_SOCKET_URL` to your Vercel origin (or leave it unset to use the browser origin), `NEXT_PUBLIC_SOCKET_PATH=/api/socket-io/socket.io`, `SOCKET_NOTIFY_URL=https://your-domain.vercel.app/api/socket-io/notify`, `CLIENT_ORIGIN=https://your-domain.vercel.app`, and the shared `SOCKET_NOTIFY_SECRET`. Configure the same database URL and NextAuth secret.
+
+The Vercel adapter is suitable for testing, but the current presence and room membership maps are process-local. Multiple Vercel function instances can therefore split Socket.IO state. Use a shared Socket.IO adapter/pub-sub store before relying on this setup for multi-instance production traffic.
 
 ## Environment variables
 
@@ -49,9 +51,16 @@ See [\.env.example](.env.example) for the complete variable list and local defau
 - `RESEND_API_KEY`, `EMAIL_FROM`: email delivery settings.
 - `HMS_ACCESS_KEY`, `HMS_SECRET`, `HMS_TEMPLATE_ID`: 100ms call settings.
 - `NEXT_PUBLIC_SOCKET_URL`: browser-facing Socket.IO URL.
+- `NEXT_PUBLIC_SOCKET_PATH`: Socket.IO path; use `/api/socket-io/socket.io` on Vercel and `/socket.io` locally.
 - `CLIENT_ORIGIN`: allowed web origin for Socket.IO CORS.
 - `SOCKET_NOTIFY_URL`, `SOCKET_NOTIFY_SECRET`: private app-to-socket notification connection.
 - `SOCKET_PORT`: local socket server port; production platforms may provide `PORT` instead.
+
+For email/password registration and password reset in production, create a Resend API key,
+verify the sending domain in Resend, and set `EMAIL_FROM` to an address on that verified
+domain (for example `ChatMeet <noreply@chatmeet.app>`). An unverified sender or a missing
+API key will prevent OTP delivery. GitHub and Google OAuth variables are optional; omit
+them if you want to use email/password authentication only.
 
 ## Useful commands
 

@@ -10,7 +10,11 @@ export async function notifySocket(
   payload: unknown,
   options: NotifyOptions = {}
 ) {
-  const socketNotifyUrl = process.env.SOCKET_NOTIFY_URL;
+  const socketNotifyUrl =
+    process.env.SOCKET_NOTIFY_URL ||
+    (process.env.VERCEL && process.env.NEXTAUTH_URL
+      ? `${process.env.NEXTAUTH_URL}/api/socket-io/notify`
+      : undefined);
   const socketNotifySecret = process.env.SOCKET_NOTIFY_SECRET;
   if (!socketNotifyUrl || !socketNotifySecret) {
     console.error("[socket-notify] SOCKET_NOTIFY_URL and SOCKET_NOTIFY_SECRET must be set");

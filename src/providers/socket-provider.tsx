@@ -18,6 +18,7 @@ import { useSocketStore } from "@/store/socket-store";
 import { useChatUIStore } from "@/store/chat-ui-store";
 import { toast } from "sonner";
 import type { SettingsDto } from "@/types/dto/settings.dto";
+import { updateMessageInCache } from "@/lib/message-cache";
 import {
   playNotificationSound,
   primeNotificationSound,
@@ -58,6 +59,32 @@ export default function SocketProvider({
     // Browsers only allow audio to start from a user gesture. Prime the
     // AudioContext on the first interaction so later message sounds play.
     window.addEventListener("pointerdown", primeNotificationSound, { once: true });
+
+    const findCachedChat = (chatId: string): any => {
+      const room = (
+        queryClient.getQueryData<RoomDto[]>(queryKeys.chats.room()) ?? []
+      ).find((candidate) => candidate.id === chatId);
+      if (room) return room;
+
+      for (const type of ["personal", "group"] as const) {
+        const list =
+          queryClient.getQueryData<ChatDto[]>(queryKeys.chats.list(type)) ?? [];
+        const chat = list.find((candidate) => candidate.id === chatId);
+        if (chat) return chat;
+      }
+      return null;
+    };
+
+    // A chat is muted when the current member's mutedUntil is in the future.
+    const isChatMuted = (chatId: string) => {
+      const chat = findCachedChat(chatId);
+      const member = chat?.members?.find(
+        (candidate: any) => candidate.userId === sessionUserId
+      );
+      return Boolean(
+        member?.mutedUntil && new Date(member.mutedUntil).getTime() > Date.now()
+      );
+    };
 
     // ── new-message: append to React Query cache, never Zustand ─────────
     const handleNewMessage = (msg: MessageDto) => {
@@ -128,6 +155,9 @@ export default function SocketProvider({
         currentActiveChatId !== msg.chatId &&
         currentActiveRoomChatId !== msg.chatId &&
         msg.senderId !== sessionUserId;
+      const mentionsMe =
+        msg.senderId !== sessionUserId &&
+        Boolean(msg.mentions?.some((mention) => mention.userId === sessionUserId));
 
       // Update last message preview in chat list caches
       for (const type of ["personal", "group"] as const) {
@@ -145,9 +175,14 @@ export default function SocketProvider({
                       content: msg.content,
                       senderId: msg.senderId,
                       type: msg.type,
+                      fileName: msg.fileName ?? null,
                       createdAt: msg.createdAt
                     },
                     unreadCount: isUnread ? (chat.unreadCount || 0) + 1 : chat.unreadCount,
+                    mentionCount:
+                      isUnread && mentionsMe
+                        ? (chat.mentionCount || 0) + 1
+                        : chat.mentionCount,
                     updatedAt: new Date().toISOString(),
                   }
                   : chat
@@ -176,9 +211,14 @@ export default function SocketProvider({
                     content: msg.content,
                     senderId: msg.senderId,
                     type: msg.type,
+                    fileName: msg.fileName ?? null,
                     createdAt: msg.createdAt,
                   },
                   unreadCount: isUnread ? (room.unreadCount || 0) + 1 : room.unreadCount,
+                  mentionCount:
+                    isUnread && mentionsMe
+                      ? (room.mentionCount || 0) + 1
+                      : room.mentionCount,
                   updatedAt: new Date().toISOString(),
                 }
                 : room
@@ -215,7 +255,7 @@ export default function SocketProvider({
       // ── Toast + sound for messages that arrive outside the open chat ──
       if (msg.senderId !== sessionUserId) {
         const settings = queryClient.getQueryData<SettingsDto>(queryKeys.settings.me);
-        const muted = settings?.notificationsMuted ?? false;
+        const muted = (settings?.notificationsMuted ?? false) || isChatMuted(msg.chatId);
         const shouldNotify =
           !muted && (isUnread || document.visibilityState !== "visible");
 
@@ -251,9 +291,11 @@ export default function SocketProvider({
               ? "Sent a photo"
               : msg.type === "VIDEO"
                 ? "Sent a video"
-                : msg.type === "FILE"
-                  ? "Sent a file"
-                  : (msg.content ?? "New message");
+                : msg.type === "AUDIO"
+                  ? "Sent a voice message"
+                  : msg.type === "FILE"
+                    ? "Sent a file"
+                    : (msg.content ?? "New message");
 
           if (settings?.notificationSound ?? true) {
             playNotificationSound();
@@ -342,6 +384,119 @@ export default function SocketProvider({
     const handleChatUpdated = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
     };
+
+    // ── message-reaction: authoritative reaction list from the server ───
+    const handleMessageReaction = (data: {
+      messageId: string;
+      chatId: string;
+      reactions: MessageDto["reactions"];
+    }) => {
+      updateMessageInCache(queryClient, data.chatId, data.messageId, (message) => ({
+        ...message,
+        reactions: data.reactions ?? [],
+      }));
+    };
+
+    // ── message-pinned: patch the message and refresh the pinned panel ──
+    const handleMessagePinned = (data: { message: MessageDto; chatId: string }) => {
+      if (!data?.message?.id) return;
+      updateMessageInCache(queryClient, data.chatId, data.message.id, () => data.message);
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.messages.pinned(data.chatId),
+      });
+    };
+
+    // ── chat-delivered: another member's device received the messages ───
+    const handleChatDelivered = (data: {
+      chatId: string;
+      userId: string;
+      lastDeliveredAt: string;
+    }) => {
+      for (const type of ["personal", "group"]) {
+        queryClient.setQueryData<ChatDto[]>(queryKeys.chats.list(type), (prev) => {
+          if (!prev) return prev;
+          return prev.map((chat) =>
+            chat.id !== data.chatId
+              ? chat
+              : {
+                  ...chat,
+                  members: chat.members.map((member) =>
+                    member.userId === data.userId
+                      ? { ...member, lastDeliveredAt: data.lastDeliveredAt }
+                      : member
+                  ),
+                }
+          );
+        });
+      }
+
+      queryClient.setQueryData<RoomDto[]>(queryKeys.chats.room(), (prev) => {
+        if (!prev) return prev;
+        return prev.map((room) =>
+          room.id !== data.chatId
+            ? room
+            : {
+                ...room,
+                members: room.members.map((member) =>
+                  member.userId === data.userId
+                    ? { ...member, lastDeliveredAt: data.lastDeliveredAt }
+                    : member
+                ),
+              }
+        );
+      });
+    };
+
+    // ── chat-preferences-updated: archive/mute changed on another tab ───
+    const handleChatPreferencesUpdated = () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+    };
+
+    // ── mention-received: targeted alert for an unopened chat ───────────
+    const handleMentionReceived = (data: { message: MessageDto; chatId: string }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.chats.all });
+
+      const ui = useChatUIStore.getState();
+      const isActive =
+        ui.activeChatId === data.chatId || ui.activeRoomChatId === data.chatId;
+      if (isActive) return;
+
+      const settings = queryClient.getQueryData<SettingsDto>(queryKeys.settings.me);
+      if ((settings?.notificationsMuted ?? false) || isChatMuted(data.chatId)) return;
+
+      if (settings?.notificationSound ?? true) playNotificationSound();
+
+      if (settings?.notificationToast ?? true) {
+        const senderName = data.message.sender?.name ?? "Someone";
+        toast(`${senderName} mentioned you`, {
+          id: `message-${data.message.id}`,
+          description:
+            data.message.content && data.message.content.length > 120
+              ? `${data.message.content.slice(0, 117)}…`
+              : data.message.content ?? "Open the chat to see the mention.",
+          action: {
+            label: "Open",
+            onClick: () => {
+              const rooms =
+                queryClient.getQueryData<RoomDto[]>(queryKeys.chats.room()) ?? [];
+              const isRoom = rooms.some((room) => room.id === data.chatId);
+              const store = useChatUIStore.getState();
+              if (isRoom) {
+                store.setActiveRoomChatId(data.chatId);
+                store.setActiveTab("room");
+              } else {
+                const chat = findCachedChat(data.chatId);
+                store.setActiveChatId(data.chatId);
+                store.setActiveTab(chat?.isGroup ? "group" : "personal");
+              }
+              store.setMobilePanel("detail");
+            },
+          },
+          duration: 8000,
+        });
+      }
+    };
+
 
     // ── user-presence-changed: patch isOnline/lastSeen in chat caches ───
     const handlePresenceChanged = (data: {
@@ -572,6 +727,11 @@ export default function SocketProvider({
     socket.on("message-updated", handleMessageUpdated);
     socket.on("message-deleted", handleMessageDeleted);
     socket.on("chat-updated", handleChatUpdated);
+    socket.on("message-reaction", handleMessageReaction);
+    socket.on("message-pinned", handleMessagePinned);
+    socket.on("chat-delivered", handleChatDelivered);
+    socket.on("chat-preferences-updated", handleChatPreferencesUpdated);
+    socket.on("mention-received", handleMentionReceived);
     socket.on("user-presence-changed", handlePresenceChanged);
     socket.on("chat-read", handleChatRead);
     socket.on("user-profile-updated", handleProfileUpdated);
@@ -609,6 +769,11 @@ export default function SocketProvider({
       socket.off("message-updated", handleMessageUpdated);
       socket.off("message-deleted", handleMessageDeleted);
       socket.off("chat-updated", handleChatUpdated);
+      socket.off("message-reaction", handleMessageReaction);
+      socket.off("message-pinned", handleMessagePinned);
+      socket.off("chat-delivered", handleChatDelivered);
+      socket.off("chat-preferences-updated", handleChatPreferencesUpdated);
+      socket.off("mention-received", handleMentionReceived);
       socket.off("user-presence-changed", handlePresenceChanged);
       socket.off("chat-read", handleChatRead);
       socket.off("user-profile-updated", handleProfileUpdated);

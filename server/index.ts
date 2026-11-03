@@ -1,5 +1,4 @@
 import express from 'express'
-import { publicUserSelect } from '../src/lib/public-user'
 import http from 'http'
 import { Server, Socket } from 'socket.io'
 import { PrismaClient } from '../src/generated/prisma/client'
@@ -7,6 +6,9 @@ import { PrismaPg } from '@prisma/adapter-pg'
 import dotenv from 'dotenv'
 import jwt from 'jsonwebtoken'
 import { canSendGroupMessage } from '../src/lib/groupPermissions'
+import { messageInclude } from '../src/lib/message-include'
+import { buildLinkPreview, extractFirstUrl } from '../src/lib/link-preview'
+import { EVERYONE_MENTION, extractMentionTokens } from '../src/lib/mentions'
 
 dotenv.config({ path: ['.env.local', '.env'] })
 
@@ -88,6 +90,132 @@ const emitToUsers = (userIds: string[], event: string, payload: unknown) => {
     }
 }
 
+// Resolves @username tokens (and @everyone) to the members of a chat.
+const resolveMentionUserIds = async (
+    chatId: string,
+    content: string | null | undefined,
+    senderId: string,
+) => {
+    const tokens = extractMentionTokens(content)
+    if (!tokens.length) return []
+
+    const members = await prisma.chatMember.findMany({
+        where: { chatId },
+        select: { userId: true, user: { select: { username: true } } },
+    })
+
+    const wantsEveryone = tokens.includes(EVERYONE_MENTION)
+    const ids = new Set<string>()
+    for (const member of members) {
+        if (member.userId === senderId) continue
+        if (wantsEveryone) {
+            ids.add(member.userId)
+            continue
+        }
+        const username = member.user.username?.toLowerCase()
+        if (username && tokens.includes(username)) ids.add(member.userId)
+    }
+    return [...ids]
+}
+
+// Marks a message as delivered to every recipient that currently has a live
+// socket, then tells the chat so senders can show "Delivered".
+const markDeliveredForOnlineRecipients = async (chatId: string, senderId: string) => {
+    const members = await prisma.chatMember.findMany({
+        where: { chatId, userId: { not: senderId } },
+        select: { userId: true },
+    })
+
+    const onlineIds = members
+        .map((member) => member.userId)
+        .filter((userId) => (activeConnections.get(userId)?.size ?? 0) > 0)
+    if (!onlineIds.length) return
+
+    const now = new Date()
+    await prisma.chatMember.updateMany({
+        where: { chatId, userId: { in: onlineIds } },
+        data: { lastDeliveredAt: now },
+    })
+
+    for (const userId of onlineIds) {
+        io.to(chatId).emit('chat-delivered', {
+            chatId,
+            userId,
+            lastDeliveredAt: now.toISOString(),
+        })
+    }
+}
+
+const endCallsForDisconnectedUser = async (userId: string) => {
+    const activeParticipants = await prisma.callParticipant.findMany({
+        where: {
+            userId,
+            status: 'JOINED',
+            callSession: { status: 'ACTIVE' },
+        },
+        select: {
+            callSessionId: true,
+            callSession: {
+                select: {
+                    chatId: true,
+                    startedById: true,
+                },
+            },
+        },
+    })
+
+    for (const participant of activeParticipants) {
+        const now = new Date()
+        const updated = await prisma.$transaction(async (tx) => {
+            await tx.callParticipant.update({
+                where: {
+                    callSessionId_userId: {
+                        callSessionId: participant.callSessionId,
+                        userId,
+                    },
+                },
+                data: { status: 'LEFT', leftAt: now },
+            })
+
+            const joinedCount = await tx.callParticipant.count({
+                where: {
+                    callSessionId: participant.callSessionId,
+                    status: 'JOINED',
+                },
+            })
+
+            if (joinedCount > 0) {
+                return null
+            }
+
+            const otherJoined = await tx.callParticipant.count({
+                where: {
+                    callSessionId: participant.callSessionId,
+                    userId: { not: participant.callSession.startedById },
+                    joinedAt: { not: null },
+                },
+            })
+
+            return tx.callSession.update({
+                where: { id: participant.callSessionId },
+                data: {
+                    status: otherJoined > 0 ? 'ENDED' : 'MISSED',
+                    endedAt: now,
+                },
+                select: { id: true, chatId: true, status: true },
+            })
+        })
+
+        if (updated) {
+            io.to(updated.chatId).emit('call-ended', {
+                sessionId: updated.id,
+                chatId: updated.chatId,
+                status: updated.status,
+            })
+        }
+    }
+}
+
 app.post('/notify', (req, res) => {
     if (req.get('x-notify-secret') !== NOTIFY_SECRET) {
         return res.status(401).json({ error: 'Unauthorized' })
@@ -137,7 +265,7 @@ app.post('/notify', (req, res) => {
     return res.json({ ok: true })
 })
 
-const server = http.createServer(app)
+export const server = http.createServer(app)
 
 const io = new Server(server, {
     // Detect abruptly closed tabs (e.g. incognito) within ~15s instead of ~45s
@@ -198,6 +326,29 @@ io.on('connection', (socket: CustomSocket) => {
             console.error('Failed to refresh user presence on connect:', error)
         })
 
+        // A live socket means undelivered messages have now reached the device.
+        // Mark them delivered and broadcast so senders can update status.
+        prisma.chatMember.findMany({
+            where: { userId: socket.user.id },
+            select: { chatId: true },
+        }).then(async (memberships) => {
+            if (!memberships.length) return
+            const now = new Date()
+            await prisma.chatMember.updateMany({
+                where: { userId: socket.user!.id },
+                data: { lastDeliveredAt: now },
+            })
+            for (const membership of memberships) {
+                io.to(membership.chatId).emit('chat-delivered', {
+                    chatId: membership.chatId,
+                    userId: socket.user!.id,
+                    lastDeliveredAt: now.toISOString(),
+                })
+            }
+        }).catch((error) => {
+            console.error('Failed to mark messages delivered on connect:', error)
+        })
+
         // Send current public presence for existing chat and room members to
         // this socket so its client cache starts from live values after login.
         prisma.chatMember.findMany({
@@ -254,9 +405,12 @@ io.on('connection', (socket: CustomSocket) => {
         }
     })
 
-    socket.on('send-message', async ({ chatId, content, type, fileUrl, fileName, fileType, fileSize, parentId: rawParentId }: { chatId: string, content?: string, type: 'TEXT' | 'IMAGE' | 'FILE' | 'VIDEO', fileUrl?: string, fileName?: string, fileType?: string, fileSize?: number, parentId?: string }) => {
+    socket.on('send-message', async ({ chatId, content, type, fileUrl, fileName, fileType, fileSize, parentId: rawParentId }: { chatId: string, content?: string, type: 'TEXT' | 'IMAGE' | 'FILE' | 'VIDEO' | 'AUDIO', fileUrl?: string, fileName?: string, fileType?: string, fileSize?: number, parentId?: string }) => {
         try {
             if (!chatId) return
+
+            const senderId = socket.user?.id
+            if (!senderId) return
 
             if (type === 'TEXT' && !content) {
                 return
@@ -298,6 +452,8 @@ io.on('connection', (socket: CustomSocket) => {
                 parentId = parent ? (parent.parentId ?? parent.id) : undefined
             }
 
+            const mentionUserIds = await resolveMentionUserIds(chatId, content, senderId)
+
             const message = await prisma.message.create({
                 data: {
                     chatId,
@@ -310,22 +466,12 @@ io.on('connection', (socket: CustomSocket) => {
                     fileName,
                     fileType,
                     fileSize,
+
+                    ...(mentionUserIds.length
+                        ? { mentions: { create: mentionUserIds.map((userId) => ({ userId })) } }
+                        : {}),
                 },
-                include: {
-                    sender: { select: publicUserSelect },
-                    parent: {
-                        select: {
-                            id: true,
-                            content: true,
-                            type: true,
-                            fileName: true,
-                            senderId: true,
-                            createdAt: true,
-                            sender: { select: publicUserSelect },
-                        },
-                    },
-                    _count: { select: { replies: true } },
-                }
+                include: messageInclude,
             })
 
             console.log('Message created in DB, emitting...')
@@ -338,10 +484,90 @@ io.on('connection', (socket: CustomSocket) => {
             })
             emitToUsers(members.map((m) => m.userId), 'chat-updated', { chatId, senderId: socket.user?.id })
 
+            // Mention notifications: targeted toast + mention badge refresh.
+            if (mentionUserIds.length) {
+                emitToUsers(mentionUserIds, 'mention-received', { message, chatId })
+            }
+
+            // Update delivery receipts for every recipient currently online.
+            markDeliveredForOnlineRecipients(chatId, senderId).catch((error) => {
+                console.error('Failed to mark message delivered:', error)
+            })
+
+            // Link previews are fetched after the message is already visible so
+            // a slow/unreachable site never delays message delivery.
+            if (type === 'TEXT' && extractFirstUrl(content)) {
+                buildLinkPreview(content)
+                    .then(async (linkPreview) => {
+                        if (!linkPreview) return
+                        const updated = await prisma.message.update({
+                            where: { id: message.id },
+                            data: { linkPreview: linkPreview as any },
+                            include: messageInclude,
+                        })
+                        io.to(chatId).emit('message-updated', updated)
+                    })
+                    .catch((error) => {
+                        console.error('Failed to build link preview:', error)
+                    })
+            }
+
         } catch (error) {
             console.error('Socket send-message error:', error)
         }
     })
+
+    // ── Emoji reactions ───────────────────────────────────────────────
+    socket.on('toggle-reaction', async ({ messageId, emoji }: { messageId?: string, emoji?: string }) => {
+        try {
+            if (typeof messageId !== 'string' || !messageId || !socket.user?.id) return
+            if (typeof emoji !== 'string' || !emoji || emoji.length > 32) return
+
+            const message = await prisma.message.findUnique({
+                where: { id: messageId },
+                select: { id: true, chatId: true },
+            })
+            if (!message) return
+
+            const member = await prisma.chatMember.findFirst({
+                where: { chatId: message.chatId, userId: socket.user.id },
+                select: { id: true },
+            })
+            if (!member) return
+
+            const existing = await prisma.messageReaction.findUnique({
+                where: {
+                    messageId_userId_emoji: {
+                        messageId,
+                        userId: socket.user.id,
+                        emoji,
+                    },
+                },
+            })
+
+            if (existing) {
+                await prisma.messageReaction.delete({ where: { id: existing.id } })
+            } else {
+                await prisma.messageReaction.create({
+                    data: { messageId, userId: socket.user.id, emoji },
+                })
+            }
+
+            const reactions = await prisma.messageReaction.findMany({
+                where: { messageId },
+                select: { emoji: true, userId: true },
+            })
+
+            io.to(message.chatId).emit('message-reaction', {
+                messageId,
+                chatId: message.chatId,
+                reactions,
+            })
+        } catch (error) {
+            console.error('Socket toggle-reaction error:', error)
+        }
+    })
+
 
     // Only sockets that passed the join-chat membership check can signal typing
     socket.on('typing', async (chatId: unknown) => {
@@ -378,6 +604,9 @@ io.on('connection', (socket: CustomSocket) => {
 
         if (sockets.size === 0) {
             activeConnections.delete(socket.user.id)
+            endCallsForDisconnectedUser(socket.user.id).catch((error) => {
+                console.error('Failed to close calls for disconnected user:', error)
+            })
             setUserPresence(socket.user.id).catch((error) => {
                 console.error('Failed to mark user offline:', error)
             })
@@ -389,14 +618,20 @@ io.on('connection', (socket: CustomSocket) => {
 
 // In-memory connections are lost on restart, so clear any stale online flags
 // before accepting connections.
-prisma.user
-    .updateMany({
-        where: { isOnline: true },
-        data: { isOnline: false, lastSeen: new Date() },
-    })
-    .catch((error) => console.error('Failed to reset presence on startup:', error))
-    .finally(() => {
-        server.listen(PORT, () => {
-            console.log(`Socket server running on port ${PORT}`);
+if (process.env.VERCEL) {
+    // Vercel owns the HTTP listener and invokes the exported server from
+    // api/socket-io.ts. Do not bind a port or reset shared presence state
+    // during a function cold start.
+} else {
+    prisma.user
+        .updateMany({
+            where: { isOnline: true },
+            data: { isOnline: false, lastSeen: new Date() },
+        })
+        .catch((error) => console.error('Failed to reset presence on startup:', error))
+        .finally(() => {
+            server.listen(PORT, () => {
+                console.log(`Socket server running on port ${PORT}`);
+            });
         });
-    });
+}
