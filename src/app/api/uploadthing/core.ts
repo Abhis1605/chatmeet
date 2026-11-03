@@ -38,6 +38,11 @@ export const uploadRouter = {
       maxFileCount: 5,
     },
 
+    audio: {
+      maxFileSize: "8MB",
+      maxFileCount: 5,
+    },
+
     pdf: {
       maxFileSize: "4MB",
       maxFileCount: 5,

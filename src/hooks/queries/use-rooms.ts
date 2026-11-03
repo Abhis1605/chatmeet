@@ -4,9 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { fetchRooms } from "@/services/room.service";
 
-export function useRooms() {
+export function useRooms(archived = false) {
   return useQuery({
-    queryKey: queryKeys.chats.room(),
-    queryFn: fetchRooms,
+    queryKey: archived ? queryKeys.chats.archived("room") : queryKeys.chats.room(),
+    queryFn: () => fetchRooms(archived),
   });
 }

@@ -1,6 +1,17 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const getResend = () => {
+  const apiKey = process.env.RESEND_API_KEY;
+  const emailFrom = process.env.EMAIL_FROM;
+
+  if (!apiKey || !emailFrom) {
+    throw new Error(
+      "Email delivery is not configured. Set RESEND_API_KEY and EMAIL_FROM."
+    );
+  }
+
+  return { resend: new Resend(apiKey), emailFrom };
+};
 
 const escapeHtml = (value: string) =>
   value
@@ -11,8 +22,9 @@ const escapeHtml = (value: string) =>
     .replaceAll("'", "&#39;");
 
 export const sendOTPEmail = async (to: string, otp: string) => {
+  const { resend, emailFrom } = getResend();
   const { error } = await resend.emails.send({
-    from: process.env.EMAIL_FROM!,
+    from: emailFrom,
     to,
     subject: "ChatMeet OTP Verification",
     html: `
@@ -31,8 +43,9 @@ export const sendOTPEmail = async (to: string, otp: string) => {
 };
 
 export const sendPasswordResetEmail = async (to: string, otp: string) => {
+  const { resend, emailFrom } = getResend();
   const { error } = await resend.emails.send({
-    from: process.env.EMAIL_FROM!,
+    from: emailFrom,
     to,
     subject: "Reset your ChatMeet password",
     html: `
@@ -65,8 +78,9 @@ export const sendRoomInviteEmail = async ({
   const safeInviter = escapeHtml(inviterName);
   const safeRoom = escapeHtml(roomName);
 
+  const { resend, emailFrom } = getResend();
   const { error } = await resend.emails.send({
-    from: process.env.EMAIL_FROM!,
+    from: emailFrom,
     to,
     subject: `${inviterName} invited you to ${roomName} on ChatMeet`,
     html: `
@@ -106,8 +120,9 @@ export const sendSupportEmail = async ({
   message: string;
   phone?: string;
 }) => {
+  const { resend, emailFrom } = getResend();
   const { error } = await resend.emails.send({
-    from: process.env.EMAIL_FROM!,
+    from: emailFrom,
     to: process.env.EMAIL_FROM!,
     replyTo: email,
     subject: `ChatMeet contact: ${topic}`,

@@ -1,12 +1,13 @@
 "use client";
 
-import { File, ImageIcon } from "lucide-react";
+import { File, ImageIcon, Video } from "lucide-react";
 import React from "react";
 
 interface AttachmentMenuProps {
   open: boolean;
   onClose: () => void;
   imageInputRef: React.RefObject<HTMLInputElement | null>;
+  videoInputRef: React.RefObject<HTMLInputElement | null>;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
 }
 
@@ -14,6 +15,7 @@ export default function AttachmentMenu({
   open,
   onClose,
   imageInputRef,
+  videoInputRef,
   fileInputRef,
 }: AttachmentMenuProps) {
   if (!open) return null;
@@ -32,8 +34,21 @@ export default function AttachmentMenu({
         <ImageIcon className="h-5 w-5 text-green-400" />
 
         <span className="text-foreground">
-          Photos & Videos
+          Photos
         </span>
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          videoInputRef.current?.click();
+          onClose();
+        }}
+        className="mt-1 flex w-full items-center gap-3 rounded-xl p-3 transition hover:bg-white/5 cursor-pointer"
+      >
+        <Video className="h-5 w-5 text-purple-400" />
+
+        <span className="text-foreground">Video</span>
       </button>
 
       <button

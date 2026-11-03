@@ -13,9 +13,11 @@ import type {
  * Matches existing API route signatures exactly (read from src/app/api/**).
  */
 
-// GET /api/chat/list?type=personal|group
-export async function fetchChats(type: string): Promise<ChatDto[]> {
-  const { data } = await apiClient.get<ChatDto[]>(`/chat/list?type=${type}`);
+// GET /api/chat/list?type=personal|group[&archived=true]
+export async function fetchChats(type: string, archived = false): Promise<ChatDto[]> {
+  const { data } = await apiClient.get<ChatDto[]>(
+    `/chat/list?type=${type}${archived ? "&archived=true" : ""}`
+  );
   return data;
 }
 
@@ -102,6 +104,29 @@ export async function deleteGroup(
 // POST /api/chat/:chatId/read
 export async function markChatAsRead(chatId: string): Promise<{ success: boolean }> {
   const { data } = await apiClient.post<{ success: boolean }>(`/chat/${chatId}/read`);
+  return data;
+}
+
+// PATCH /api/chat/:chatId/preferences — archive / mute this chat
+export interface ChatPreferencesRequest {
+  archived?: boolean;
+  muted?: boolean;
+  mutedUntil?: string | null;
+}
+
+export interface ChatPreferencesResponse {
+  archivedAt: string | null;
+  mutedUntil: string | null;
+}
+
+export async function updateChatPreferences(
+  chatId: string,
+  body: ChatPreferencesRequest
+): Promise<ChatPreferencesResponse> {
+  const { data } = await apiClient.patch<ChatPreferencesResponse>(
+    `/chat/${chatId}/preferences`,
+    body satisfies ChatPreferencesRequest
+  );
   return data;
 }
 

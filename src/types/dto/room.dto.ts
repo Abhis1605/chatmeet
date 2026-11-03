@@ -12,6 +12,10 @@ export interface RoomMemberDto {
   userId: string;
   chatId: string;
   role: RoomMemberRole;
+  lastReadAt?: string | null;
+  lastDeliveredAt?: string | null;
+  archivedAt?: string | null;
+  mutedUntil?: string | null;
   user: UserDto;
 }
 
@@ -28,10 +32,12 @@ export interface RoomDto {
     id: string;
     content: string | null;
     senderId: string;
-    type: "TEXT" | "IMAGE" | "VIDEO" | "FILE";
+    type: "TEXT" | "IMAGE" | "VIDEO" | "AUDIO" | "FILE";
+    fileName: string | null;
     createdAt: string;
   } | null;
   unreadCount?: number;
+  mentionCount?: number;
   createdAt: string;
   updatedAt: string;
 }

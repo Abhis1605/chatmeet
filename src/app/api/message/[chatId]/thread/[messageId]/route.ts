@@ -1,23 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { publicUserSelect } from "@/lib/public-user";
+import { messageInclude } from "@/lib/message-include";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../auth/[...nextauth]/route";
 
-const messageInclude = {
-  sender: { select: publicUserSelect },
-  parent: {
-    select: {
-      id: true,
-      content: true,
-      type: true,
-      fileName: true,
-      senderId: true,
-      createdAt: true,
-      sender: { select: publicUserSelect },
-    },
-  },
-  _count: { select: { replies: true } },
-} as const;
 
 export async function GET(
   _req: Request,

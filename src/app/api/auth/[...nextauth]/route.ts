@@ -30,14 +30,6 @@ declare module "next-auth/jwt" {
 
 export const authOptions: NextAuthOptions = {
     providers: [
-        Github({
-            clientId: config.GITHUB_CLIENT_ID!,
-            clientSecret: config.GITHUB_CLIENT_SECRET!
-        }),
-        Google({
-            clientId: config.GOOGLE_CLIENT_ID!,
-            clientSecret: config.GOOGLE_CLIENT_SECRET!
-        }),
         Credentials({
             name: 'Credentials',
             credentials:{
@@ -73,6 +65,18 @@ export const authOptions: NextAuthOptions = {
                 return user
             },
         }),
+        ...(config.GITHUB_CLIENT_ID && config.GITHUB_CLIENT_SECRET
+            ? [Github({
+                clientId: config.GITHUB_CLIENT_ID,
+                clientSecret: config.GITHUB_CLIENT_SECRET
+            })]
+            : []),
+        ...(config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET
+            ? [Google({
+                clientId: config.GOOGLE_CLIENT_ID,
+                clientSecret: config.GOOGLE_CLIENT_SECRET
+            })]
+            : []),
     ],
     callbacks: {
         async signIn({ user, account }){

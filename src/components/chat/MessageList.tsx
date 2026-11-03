@@ -14,9 +14,14 @@ interface Props {
   onDeleteMessage?: (message: any) => void;
   onReplyMessage?: (message: any) => void;
   onOpenThread?: (message: any) => void;
+  onReact?: (message: any, emoji: string) => void;
+  onPin?: (message: any) => void;
+  onForward?: (message: any) => void;
   // 1:1 chats: when the other person last read the chat (null = receipts hidden)
   otherReadAt?: string | null;
+  otherDeliveredAt?: string | null;
   groupSeenByCount?: number;
+  groupDeliveredCount?: number;
   groupRecipientCount?: number;
 }
 
@@ -31,8 +36,13 @@ export default function MessageList({
   onDeleteMessage,
   onReplyMessage,
   onOpenThread,
+  onReact,
+  onPin,
+  onForward,
   otherReadAt = null,
+  otherDeliveredAt = null,
   groupSeenByCount,
+  groupDeliveredCount,
   groupRecipientCount = 0,
 }: Props) {
   // Read status is shown once, under my most recent message
@@ -43,13 +53,24 @@ export default function MessageList({
     ? myLastMessage && groupSeenByCount !== undefined
       ? groupSeenByCount > 0
         ? `Seen by ${groupSeenByCount}${groupRecipientCount > 0 && groupSeenByCount === groupRecipientCount ? " (everyone)" : ""}`
-        : "Sent"
-      : null
+        : groupDeliveredCount && groupDeliveredCount > 0
+          ? `Delivered to ${groupDeliveredCount}`
+          : "Sent"
+      : myLastMessage && groupDeliveredCount && groupDeliveredCount > 0
+        ? `Delivered to ${groupDeliveredCount}`
+        : null
     : myLastMessage && otherReadAt
       ? new Date(otherReadAt) >= new Date(myLastMessage.createdAt)
         ? "Seen"
-        : "Sent"
-      : null;
+        : otherDeliveredAt &&
+            new Date(otherDeliveredAt) >= new Date(myLastMessage.createdAt)
+          ? "Delivered"
+          : "Sent"
+      : myLastMessage && otherDeliveredAt
+        ? new Date(otherDeliveredAt) >= new Date(myLastMessage.createdAt)
+          ? "Delivered"
+          : "Sent"
+        : null;
 
   const replyCounts = new Map<string, number>();
   for (const message of messages) {
@@ -126,16 +147,20 @@ export default function MessageList({
         const serverReplyCount =
           typeof message._count?.replies === "number" ? message._count.replies : 0;
         return (
-        <div key={message.id}>
+        <div key={message.id} id={`message-${message.id}`}>
           <MessageBubble
             message={message}
             isMe={message.senderId === session?.user?.id}
             showSender={isGroup}
             replyCount={Math.max(loadedReplyCount, serverReplyCount)}
+            currentUserId={session?.user?.id}
             onReply={onReplyMessage}
             onOpenThread={onOpenThread}
             onEdit={onEditMessage}
             onDelete={onDeleteMessage}
+            onReact={onReact}
+            onPin={onPin}
+            onForward={onForward}
           />
           {message.id === myLastMessage?.id && myLastStatus && (
             <p

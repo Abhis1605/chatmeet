@@ -13,15 +13,19 @@ export function useMarkAsRead() {
     onMutate: (chatId) => {
       // Optimistically zero out unreadCount in the cache
       for (const type of ["personal", "group"]) {
-        queryClient.setQueryData<ChatDto[]>(
+        for (const key of [
           queryKeys.chats.list(type),
-          (prev) => {
+          queryKeys.chats.archived(type),
+        ]) {
+          queryClient.setQueryData<ChatDto[]>(key, (prev) => {
             if (!prev) return prev;
             return prev.map((chat) =>
-              chat.id === chatId ? { ...chat, unreadCount: 0 } : chat
+              chat.id === chatId
+                ? { ...chat, unreadCount: 0, mentionCount: 0 }
+                : chat
             );
-          }
-        );
+          });
+        }
       }
     },
     // We don't necessarily need to rollback on error or invalidate because it's just a read receipt, 

@@ -95,56 +95,49 @@ export default function CallLauncher({
   };
 
   const activeMediaType = activeCall?.mediaType;
+  const renderCallButton = (mediaType: CallMediaType) => {
+    const isActiveCall = activeCall?.mediaType === mediaType;
+    const hasDifferentActiveCall = Boolean(activeCall && !isActiveCall);
+    const label =
+      mediaType === "AUDIO" ? "voice call" : "video call";
+
+    return (
+      <button
+        key={mediaType}
+        type="button"
+        title={
+          isActiveCall
+            ? `Join ongoing ${label}`
+            : hasDifferentActiveCall
+              ? `A ${activeMediaType === "AUDIO" ? "voice" : "video"} call is already active`
+              : `Start ${label}`
+        }
+        aria-label={
+          isActiveCall
+            ? `Join ongoing ${label}`
+            : hasDifferentActiveCall
+              ? `${label} unavailable while another call is active`
+              : `Start ${label}`
+        }
+        onClick={() => startOrJoin(mediaType)}
+        disabled={busy !== null || hasDifferentActiveCall}
+        className={`${BUTTON_CLASS} ${
+          isActiveCall ? "text-green-500 hover:text-green-400" : ""
+        }`}
+      >
+        {mediaType === "AUDIO" ? (
+          <Phone className="h-5 w-5" />
+        ) : (
+          <Video className="h-5 w-5" />
+        )}
+      </button>
+    );
+  };
 
   return (
     <>
-      {activeCall ? (
-        <button
-          type="button"
-          title={
-            activeMediaType === "AUDIO"
-              ? "Join ongoing voice call"
-              : "Join ongoing video call"
-          }
-          aria-label={
-            activeMediaType === "AUDIO"
-              ? "Join ongoing voice call"
-              : "Join ongoing video call"
-          }
-          onClick={() => startOrJoin(activeMediaType ?? "VIDEO")}
-          disabled={busy !== null}
-          className={`${BUTTON_CLASS} text-green-500 hover:text-green-400`}
-        >
-          {activeMediaType === "AUDIO" ? (
-            <Phone className="h-5 w-5" />
-          ) : (
-            <Video className="h-5 w-5" />
-          )}
-        </button>
-      ) : (
-        <>
-          <button
-            type="button"
-            title="Start video call"
-            aria-label="Start video call"
-            onClick={() => startOrJoin("VIDEO")}
-            disabled={busy !== null}
-            className={BUTTON_CLASS}
-          >
-            <Video className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            title="Start voice call"
-            aria-label="Start voice call"
-            onClick={() => startOrJoin("AUDIO")}
-            disabled={busy !== null}
-            className={BUTTON_CLASS}
-          >
-            <Phone className="h-5 w-5" />
-          </button>
-        </>
-      )}
+      {renderCallButton("VIDEO")}
+      {renderCallButton("AUDIO")}
 
       {mounted &&
         inCall &&

@@ -23,12 +23,28 @@ export async function GET(
             return Response.json({ error: 'Forbidden' }, { status: 403 })
         }
 
-        const callSession = await prisma.callSession.findFirst({
+        let callSession = await prisma.callSession.findFirst({
             where: { chatId, status: 'ACTIVE' },
             orderBy: { startedAt: 'desc' },
+            include: { participants: true },
         })
 
         if (!callSession) {
+            return Response.json({ callSession: null })
+        }
+
+        const joinedParticipants = callSession.participants.filter(
+            (participant) => participant.status === 'JOINED'
+        )
+
+        // A browser can close before the leave request reaches the server.
+        // Do not keep exposing an abandoned session as an active call.
+        if (joinedParticipants.length === 0) {
+            callSession = await prisma.callSession.update({
+                where: { id: callSession.id },
+                data: { status: 'MISSED', endedAt: new Date() },
+                include: { participants: true },
+            })
             return Response.json({ callSession: null })
         }
 

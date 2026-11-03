@@ -65,7 +65,9 @@ export async function fetchRoomMembers(chatId: string): Promise<RoomMemberDto[]>
 }
 
 // GET /api/room/list (via chat/list?type=room)
-export async function fetchRooms(): Promise<RoomDto[]> {
-  const { data } = await apiClient.get<RoomDto[]>("/chat/list?type=room");
+export async function fetchRooms(archived = false): Promise<RoomDto[]> {
+  const { data } = await apiClient.get<RoomDto[]>(
+    `/chat/list?type=room${archived ? "&archived=true" : ""}`
+  );
   return data;
 }

@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { publicUserSelect } from "@/lib/public-user";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { notifySocket } from "@/lib/socket-notify";
+import { messageInclude } from "@/lib/message-include";
+import { buildLinkPreview, extractFirstUrl } from "@/lib/link-preview";
 
 async function getMember(chatId: string, userId: string) {
   return prisma.chatMember.findFirst({ where: { chatId, userId } });
@@ -29,21 +30,7 @@ export async function GET(
       orderBy: { createdAt: "desc" },
       take: 50,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      include: {
-        sender: { select: publicUserSelect },
-        parent: {
-          select: {
-            id: true,
-            content: true,
-            type: true,
-            fileName: true,
-            senderId: true,
-            createdAt: true,
-            sender: { select: publicUserSelect },
-          },
-        },
-        _count: { select: { replies: true } },
-      },
+      include: messageInclude,
     });
 
     const nextCursor = messages.length === 50 ? messages[messages.length - 1].id : null;
@@ -86,22 +73,23 @@ export async function PATCH(
     const message = await prisma.message.update({
       where: { id: messageId },
       data: { content },
-      include: {
-        sender: { select: publicUserSelect },
-        parent: {
-          select: {
-            id: true,
-            content: true,
-            type: true,
-            fileName: true,
-            senderId: true,
-            createdAt: true,
-            sender: { select: publicUserSelect },
-          },
-        },
-      },
+      include: messageInclude,
     });
     await notifySocket("message-updated", message, { chatId });
+
+    // Refresh the link preview if the edited text points somewhere new.
+    if (extractFirstUrl(content)) {
+      void buildLinkPreview(content).then(async (linkPreview) => {
+        if (!linkPreview) return;
+        const updated = await prisma.message.update({
+          where: { id: messageId },
+          data: { linkPreview: linkPreview as any },
+          include: messageInclude,
+        });
+        await notifySocket("message-updated", updated, { chatId });
+      });
+    }
+
     return Response.json({ message });
   } catch (error) {
     console.error(error);

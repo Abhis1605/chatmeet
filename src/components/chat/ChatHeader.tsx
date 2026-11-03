@@ -1,8 +1,9 @@
 "use client";
 
-import { ArrowLeft, Users } from "lucide-react";
+import { ArrowLeft, Pin, Search, Users } from "lucide-react";
 import { getAvatarSrc } from "@/lib/avatars";
 import CallLauncher from "@/components/call/CallLauncher";
+import ChatOptionsMenu from "./ChatOptionsMenu";
 
 interface ChatHeaderProps {
   otherUser: any;
@@ -11,6 +12,11 @@ interface ChatHeaderProps {
   chat?: any;
   onManageGroup?: () => void;
   onBack?: () => void;
+  onOpenSearch?: () => void;
+  onOpenPinned?: () => void;
+  pinnedCount?: number;
+  archivedAt?: string | null;
+  mutedUntil?: string | null;
 }
 
 export default function ChatHeader({
@@ -20,6 +26,11 @@ export default function ChatHeader({
   chat,
   onManageGroup,
   onBack,
+  onOpenSearch,
+  onOpenPinned,
+  pinnedCount = 0,
+  archivedAt,
+  mutedUntil,
 }: ChatHeaderProps) {
   const title = chat?.isGroup ? chat.name : otherUser?.name || otherUser?.email;
   const subtitle = chat?.isGroup
@@ -71,6 +82,46 @@ export default function ChatHeader({
         <CallLauncher
           chatId={chat.id}
           callType={chat.isGroup ? "GROUP" : "ONE_TO_ONE"}
+        />
+      )}
+
+      {chat?.id && onOpenSearch && (
+        <button
+          type="button"
+          title="Search messages"
+          aria-label="Search messages"
+          onClick={onOpenSearch}
+          className="p-2 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition cursor-pointer"
+        >
+          <Search className="w-5 h-5" />
+        </button>
+      )}
+
+      {chat?.id && onOpenPinned && (
+        <button
+          type="button"
+          title="Pinned messages"
+          aria-label="Pinned messages"
+          onClick={onOpenPinned}
+          className="relative p-2 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition cursor-pointer"
+        >
+          <Pin className="w-5 h-5" />
+          {pinnedCount > 0 && (
+            <span className="absolute -right-1 -top-1 min-w-[16px] rounded-full bg-primary px-1 text-center text-[9px] font-bold leading-4 text-on-primary">
+              {pinnedCount > 9 ? "9+" : pinnedCount}
+            </span>
+          )}
+        </button>
+      )}
+
+      {chat?.id && (
+        <ChatOptionsMenu
+          chatId={chat.id}
+          archivedAt={archivedAt ?? chat.archivedAt}
+          mutedUntil={mutedUntil ?? chat.mutedUntil}
+          onOpenSearch={onOpenSearch}
+          onOpenPinned={onOpenPinned}
+          pinnedCount={pinnedCount}
         />
       )}
 

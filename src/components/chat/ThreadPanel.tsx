@@ -15,6 +15,8 @@ interface ThreadPanelProps {
   isGroup?: boolean;
   disabled?: boolean;
   onClose: () => void;
+  onReact?: (message: any, emoji: string) => void;
+  onPin?: (message: any) => void;
 }
 
 export default function ThreadPanel({
@@ -24,6 +26,8 @@ export default function ThreadPanel({
   isGroup = false,
   disabled = false,
   onClose,
+  onReact,
+  onPin,
 }: ThreadPanelProps) {
   const { data: thread, isLoading, isError, refetch } = useThread(chatId, messageId);
   const { mutate: sendMessage, isPending: isSending } = useSendMessage();
@@ -114,6 +118,9 @@ export default function ThreadPanel({
                 message={thread.parent}
                 isMe={thread.parent.senderId === session?.user?.id}
                 showSender={isGroup}
+                currentUserId={session?.user?.id}
+                onReact={onReact}
+                onPin={onPin}
               />
 
               <div className="flex items-center gap-2">
@@ -136,6 +143,9 @@ export default function ThreadPanel({
                     isMe={reply.senderId === session?.user?.id}
                     showSender={isGroup}
                     hideParent
+                    currentUserId={session?.user?.id}
+                    onReact={onReact}
+                    onPin={onPin}
                   />
                 ))
               )}

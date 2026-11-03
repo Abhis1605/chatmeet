@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { LogIn, Plus } from "lucide-react";
+import { Archive, AtSign, BellOff, Inbox, LogIn, Plus } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { useChatUIStore } from "@/store/chat-ui-store";
 import { useRooms } from "@/hooks/queries/use-rooms";
 import CreateRoomModal from "./CreateRoomModal";
@@ -10,8 +11,10 @@ import PendingInvitesList from "./PendingInvitesList";
 import Spinner from "../Spinner";
 
 export default function RoomListPanel() {
+  const { data: session } = useSession();
   const { activeRoomChatId, setActiveRoomChatId, setMobilePanel } = useChatUIStore();
-  const { data: rooms = [], isLoading } = useRooms();
+  const [showArchived, setShowArchived] = useState(false);
+  const { data: rooms = [], isLoading } = useRooms(showArchived);
 
   const [openCreate, setOpenCreate] = useState(false);
   const [openJoin, setOpenJoin] = useState(false);
@@ -38,8 +41,23 @@ export default function RoomListPanel() {
   return (
     <div className="flex h-full w-full min-w-0 flex-col border-r border-border md:w-full">
       <div className="p-3 border-b border-border flex justify-between items-center">
-        <h2 className="text-foreground font-semibold">Rooms</h2>
+        <h2 className="text-foreground font-semibold">
+          {showArchived ? "Archived rooms" : "Rooms"}
+        </h2>
         <div className="flex gap-1">
+          <button
+            type="button"
+            title={showArchived ? "Back to rooms" : "Archived rooms"}
+            aria-label={showArchived ? "Back to rooms" : "Archived rooms"}
+            onClick={() => setShowArchived((value) => !value)}
+            className={`rounded-md p-2 transition cursor-pointer ${
+              showArchived
+                ? "bg-primary-soft text-primary"
+                : "text-muted hover:bg-surface-soft hover:text-foreground"
+            }`}
+          >
+            {showArchived ? <Inbox className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
+          </button>
           <button
             type="button"
             title="Join room"
@@ -76,7 +94,9 @@ export default function RoomListPanel() {
               alt="No rooms"
               className="w-32 h-32 object-contain opacity-90"
             />
-            <p className="text-sm">No rooms yet</p>
+            <p className="text-sm">
+              {showArchived ? "No archived rooms" : "No rooms yet"}
+            </p>
           </div>
         )}
 
@@ -89,6 +109,29 @@ export default function RoomListPanel() {
           .map((room) => {
             const lastMessage = room.lastMessage;
             const hasUnread = (room.unreadCount || 0) > 0;
+            const mentionCount = room.mentionCount || 0;
+            const currentMember = room.members.find(
+              (member) =>
+                (member.userId ?? member.user?.id) === session?.user?.id
+            );
+            const isMuted = Boolean(
+              currentMember?.mutedUntil &&
+                new Date(currentMember.mutedUntil).getTime() > Date.now()
+            );
+            const previewText =
+              lastMessage?.type === "IMAGE"
+                ? "Photo"
+                : lastMessage?.type === "VIDEO"
+                  ? "Video"
+                  : lastMessage?.type === "AUDIO"
+                    ? "Voice message"
+                    : lastMessage?.type === "FILE"
+                      ? lastMessage.fileName || "File"
+                      : lastMessage?.content;
+            const preview =
+              previewText && previewText.length > 40
+                ? `${previewText.substring(0, 40)}...`
+                : previewText;
 
             return (
               <div
@@ -109,13 +152,16 @@ export default function RoomListPanel() {
 
                 <div className="flex-1 min-w-0 flex flex-col justify-center">
                   <div className="flex justify-between items-center mb-1">
-                    <p
-                      className={`text-sm truncate ${
-                        hasUnread ? "text-foreground font-bold" : "text-muted font-medium"
-                      }`}
-                    >
-                      {room.name}
-                    </p>
+                    <div className="flex min-w-0 items-center gap-1">
+                      <p
+                        className={`text-sm truncate ${
+                          hasUnread ? "text-foreground font-bold" : "text-muted font-medium"
+                        }`}
+                      >
+                        {room.name}
+                      </p>
+                      {isMuted && <BellOff size={12} className="shrink-0 text-muted" />}
+                    </div>
                     {mounted && lastMessage?.createdAt && (
                       <span className="text-[10px] text-muted whitespace-nowrap ml-2">
                         {formatRelativeTime(lastMessage.createdAt)}
@@ -129,17 +175,21 @@ export default function RoomListPanel() {
                         hasUnread ? "text-muted font-bold" : "text-muted"
                       }`}
                     >
-                      {lastMessage?.content
-                        ? lastMessage.content.length > 40
-                          ? `${lastMessage.content.substring(0, 40)}...`
-                          : lastMessage.content
-                        : "No messages yet"}
+                      {preview || "No messages yet"}
                     </p>
-                    {hasUnread && (
-                      <span className="bg-primary text-on-primary text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
-                        {(room.unreadCount || 0) > 9 ? "9+" : room.unreadCount}
-                      </span>
-                    )}
+                    <div className="flex shrink-0 items-center gap-1">
+                      {mentionCount > 0 && (
+                        <span className="flex items-center gap-0.5 rounded-full bg-error px-1.5 py-0.5 text-[10px] font-bold text-white">
+                          <AtSign size={10} />
+                          {mentionCount > 9 ? "9+" : mentionCount}
+                        </span>
+                      )}
+                      {hasUnread && (
+                        <span className="bg-primary text-on-primary text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                          {(room.unreadCount || 0) > 9 ? "9+" : room.unreadCount}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {!hasUnread && (

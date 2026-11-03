@@ -6,12 +6,14 @@ import { fetchChats } from "@/services/chat.service";
 
 /**
  * useChats — fetches the list of chats for the given type ('personal' | 'group').
- * Keyed by queryKeys.chats.list(type) — invalidated by SocketProvider on 'chat-updated'.
+ * Pass archived=true to fetch the archived inbox instead.
  */
-export function useChats(type: string) {
+export function useChats(type: string, archived = false) {
   return useQuery({
-    queryKey: queryKeys.chats.list(type),
-    queryFn: () => fetchChats(type),
+    queryKey: archived
+      ? queryKeys.chats.archived(type)
+      : queryKeys.chats.list(type),
+    queryFn: () => fetchChats(type, archived),
     enabled: !!type,
   });
 }

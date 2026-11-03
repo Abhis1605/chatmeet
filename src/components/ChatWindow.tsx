@@ -7,15 +7,21 @@ import ChatHeader from "./chat/ChatHeader";
 import MessageList from "./chat/MessageList";
 import ChatInput from "./chat/ChatInput";
 import ThreadPanel from "./chat/ThreadPanel";
+import MessageSearchPanel from "./chat/MessageSearchPanel";
+import PinnedMessagesPanel from "./chat/PinnedMessagesPanel";
+import ForwardModal from "./chat/ForwardModal";
 import { useUploadThing } from "@/lib/uploadthing";
 import GroupMembersModal from "./group/GroupMembersModal";
 import { canSendGroupMessage } from "@/lib/groupPermissions";
 import { showError } from "@/lib/toast";
 import { useChats } from "@/hooks/queries/use-chats";
 import { useMessages } from "@/hooks/queries/use-messages";
+import { usePinnedMessages } from "@/hooks/queries/use-pinned-messages";
 import { useSocketContext } from "@/providers/socket-provider";
 import { useSendMessage } from "@/hooks/mutations/use-send-message";
 import { useMarkAsRead } from "@/hooks/mutations/use-mark-as-read";
+import { useToggleReaction } from "@/hooks/mutations/use-toggle-reaction";
+import { usePinMessage } from "@/hooks/mutations/use-pin-message";
 import { deleteMessage, updateMessage } from "@/services/message.service";
 import { toast } from "sonner";
 import { useSettings } from "@/hooks/queries/use-settings";
@@ -58,6 +64,13 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
   const [messageActionError, setMessageActionError] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<any>(null);
   const [threadMessage, setThreadMessage] = useState<any>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [pinnedOpen, setPinnedOpen] = useState(false);
+  const [forwardMessage, setForwardMessage] = useState<any>(null);
+
+  const { data: pinnedMessages = [] } = usePinnedMessages(activeChatId);
+  const { mutate: toggleReaction } = useToggleReaction(activeChatId);
+  const { mutate: pinMessage } = usePinMessage(activeChatId);
 
   const { startUpload } = useUploadThing("messageUploader");
 
@@ -65,6 +78,9 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
     setReplyTo(null);
     setThreadMessage(null);
     setEditingMessage(null);
+    setSearchOpen(false);
+    setPinnedOpen(false);
+    setForwardMessage(null);
   }, [activeChatId]);
 
   const selectedChatRef = useRef<any>(null);
@@ -80,6 +96,11 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
     : selectedChat?.members?.find(
         (member: any) => member.user.id !== session?.user?.id,
       )?.lastReadAt ?? null;
+  const otherDeliveredAt = selectedChat?.isGroup
+    ? null
+    : selectedChat?.members?.find(
+        (member: any) => member.user.id !== session?.user?.id,
+      )?.lastDeliveredAt ?? null;
   const myLastMessage = [...messages].reverse().find(
     (message) => message.senderId === session?.user?.id
   );
@@ -88,6 +109,13 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
         member.userId !== session?.user?.id &&
         member.lastReadAt &&
         new Date(member.lastReadAt) >= new Date(myLastMessage.createdAt)
+      ).length
+    : undefined;
+  const groupDeliveredCount = selectedChat?.isGroup && myLastMessage
+    ? selectedChat.members.filter((member) =>
+        member.userId !== session?.user?.id &&
+        member.lastDeliveredAt &&
+        new Date(member.lastDeliveredAt) >= new Date(myLastMessage.createdAt)
       ).length
     : undefined;
 
@@ -99,6 +127,33 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
   const canSendMessage = selectedChat?.isGroup
     ? canSendGroupMessage(currentMember)
     : true;
+
+  const draftKey =
+    activeChatId && session?.user?.id
+      ? `chatmeet:draft:${session.user.id}:${activeChatId}`
+      : null;
+
+  useEffect(() => {
+    if (!draftKey) {
+      setInput("");
+      return;
+    }
+    try {
+      setInput(localStorage.getItem(draftKey) ?? "");
+    } catch {
+      setInput("");
+    }
+  }, [draftKey]);
+
+  const persistDraft = (value: string) => {
+    if (!draftKey) return;
+    try {
+      if (value) localStorage.setItem(draftKey, value);
+      else localStorage.removeItem(draftKey);
+    } catch {
+      // Drafts are a convenience; ignore storage failures (private mode, quota).
+    }
+  };
 
   useEffect(() => {
     selectedChatRef.current = selectedChat;
@@ -186,6 +241,7 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
     });
 
     setInput("");
+    persistDraft("");
     setReplyTo(null);
     socket.emit("stop-typing", selectedChat.id);
 
@@ -244,8 +300,93 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
     setThreadMessage({ id: message.parentId ?? message.id });
   };
 
+  const handleReact = (message: any, emoji: string) => {
+    if (!message?.id || message._isOptimistic) return;
+    toggleReaction({ messageId: message.id, emoji });
+  };
+
+  const handlePin = (message: any) => {
+    if (!message?.id) return;
+    const pinned = !message.pinnedAt;
+    pinMessage(
+      { messageId: message.id, pinned },
+      {
+        onSuccess: () =>
+          toast.success(pinned ? "Message pinned" : "Message unpinned"),
+        onError: () => showError("Could not update that pinned message."),
+      }
+    );
+  };
+
+  const jumpToMessage = (messageId: string) => {
+    setSearchOpen(false);
+    setPinnedOpen(false);
+
+    const attempt = () => {
+      const element = document.getElementById(`message-${messageId}`);
+      if (!element) return false;
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+      element.classList.add("ring-2", "ring-primary", "rounded-lg");
+      setTimeout(() => {
+        element.classList.remove("ring-2", "ring-primary", "rounded-lg");
+      }, 2000);
+      return true;
+    };
+
+    requestAnimationFrame(() => {
+      if (!attempt()) {
+        setTimeout(() => {
+          if (!attempt()) {
+            toast("That message is outside the loaded history.");
+          }
+        }, 80);
+      }
+    });
+  };
+
+  const uploadAndSend = async (file: File) => {
+    if (!socket || !selectedChat?.id) return;
+    if (!canSendMessage) {
+      showError("Only admins or permitted members can upload in this group.");
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const uploaded = await startUpload([file]);
+
+      if (!uploaded?.length) return;
+      const result = uploaded[0];
+
+      const type = file.type.startsWith("image/")
+        ? "IMAGE"
+        : file.type.startsWith("video/")
+          ? "VIDEO"
+          : file.type.startsWith("audio/")
+            ? "AUDIO"
+            : "FILE";
+
+      sendMessageMutation({
+        chatId: selectedChat.id,
+        type,
+        fileUrl: result.serverData.url,
+        fileName: result.name,
+        fileType: result.type,
+        fileSize: result.size,
+        parentId: replyTo?.id,
+      });
+      setReplyTo(null);
+    } catch (error) {
+      console.error("Failed to upload file:", error);
+      showError("Could not upload that file. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleTyping = (value: string) => {
     setInput(value);
+    persistDraft(value);
 
     if (!socket || !socket.connected || !selectedChat?.id) {
       return;
@@ -296,6 +437,11 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
         chat={selectedChat}
         onManageGroup={() => setOpenGroupMembers(true)}
         onBack={onBack}
+        onOpenSearch={() => setSearchOpen(true)}
+        onOpenPinned={() => setPinnedOpen(true)}
+        pinnedCount={pinnedMessages.length}
+        archivedAt={currentMember?.archivedAt}
+        mutedUntil={currentMember?.mutedUntil}
       />
 
       <MessageList
@@ -303,7 +449,9 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
         session={session}
         isGroup={Boolean(selectedChat?.isGroup)}
         otherReadAt={otherReadAt}
+        otherDeliveredAt={otherDeliveredAt}
         groupSeenByCount={settings?.readReceiptsEnabled === false ? undefined : groupSeenByCount}
+        groupDeliveredCount={groupDeliveredCount}
         groupRecipientCount={selectedChat?.isGroup ? Math.max(0, selectedChat.members.length - 1) : undefined}
         onLoadMore={fetchNextPage}
         hasMore={Boolean(hasNextPage)}
@@ -312,6 +460,9 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
         onDeleteMessage={removeMessage}
         onReplyMessage={setReplyTo}
         onOpenThread={openThread}
+        onReact={handleReact}
+        onPin={handlePin}
+        onForward={setForwardMessage}
       />
 
       {messageActionError && (
@@ -380,34 +531,8 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
           onSend={sendMessage}
           disabled={!canSendMessage || uploading}
           placeholder={canSendMessage ? "Type a message..." : "Read-only group member"}
-          onUpload={async (file: File) => {
-            if (!socket || !selectedChat?.id) return;
-            if (!canSendMessage) {
-              showError("Only admins or permitted members can upload in this group.");
-              return;
-            }
-
-            try {
-              setUploading(true);
-              const uploaded = await startUpload([file]);
-
-              if (!uploaded?.length) return;
-              const result = uploaded[0];
-
-              sendMessageMutation({
-                chatId: selectedChat.id,
-                type: file.type.startsWith("image/") ? "IMAGE" : "FILE",
-                fileUrl: result.serverData.url,
-                fileName: result.name,
-                fileType: result.type,
-                fileSize: result.size,
-                parentId: replyTo?.id,
-              });
-              setReplyTo(null);
-            } finally {
-              setUploading(false);
-            }
-          }}
+          onUpload={uploadAndSend}
+          onVoiceNote={uploadAndSend}
         />
       </div>
 
@@ -418,6 +543,31 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
         currentUserId={session?.user?.id}
       />
 
+      <MessageSearchPanel
+        open={searchOpen}
+        chatId={selectedChat.id}
+        onClose={() => setSearchOpen(false)}
+        onJumpToMessage={jumpToMessage}
+      />
+
+      <PinnedMessagesPanel
+        open={pinnedOpen}
+        chatId={selectedChat.id}
+        onClose={() => setPinnedOpen(false)}
+        onJumpToMessage={jumpToMessage}
+        onUnpin={handlePin}
+        canPin={canSendMessage}
+      />
+
+      {forwardMessage && (
+        <ForwardModal
+          open
+          chatId={selectedChat.id}
+          message={forwardMessage}
+          onClose={() => setForwardMessage(null)}
+        />
+      )}
+
       {threadMessage && selectedChat?.id && (
         <ThreadPanel
           chatId={selectedChat.id}
@@ -426,6 +576,8 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
           isGroup={Boolean(selectedChat.isGroup)}
           disabled={!canSendMessage}
           onClose={() => setThreadMessage(null)}
+          onReact={handleReact}
+          onPin={handlePin}
         />
       )}
     </div>

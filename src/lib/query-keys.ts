@@ -6,6 +6,7 @@ export const queryKeys = {
   chats: {
     all: ["chats"] as const,
     list: (type: string) => ["chats", "list", type] as const,
+    archived: (type: string) => ["chats", "archived", type] as const,
     // ── Room list key (new, separate from personal/group list) ──────
     room: () => ["chats", "room"] as const,
   },
@@ -14,6 +15,8 @@ export const queryKeys = {
     thread: (chatId: string, messageId: string) =>
       ["messages", "thread", chatId, messageId] as const,
     threadAll: ["messages", "thread"] as const,
+    pinned: (chatId: string) => ["messages", "pinned", chatId] as const,
+    search: (chatId: string, q: string) => ["messages", "search", chatId, q] as const,
   },
   users: {
     search: (q: string) => ["users", "search", q] as const,

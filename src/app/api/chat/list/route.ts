@@ -14,6 +14,7 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type");
+    const archived = searchParams.get("archived") === "true";
 
     const chatFilter =
       type === "room"
@@ -29,6 +30,7 @@ export async function GET(req: Request) {
         members: {
           some: {
             userId: session.user.id,
+            ...(archived ? { archivedAt: { not: null } } : { archivedAt: null }),
           },
         },
       },
@@ -67,6 +69,23 @@ export async function GET(req: Request) {
       unreadRows.map((row) => [row.chatId, Number(row.unreadCount)])
     );
 
+    // Unread @mentions per chat (only messages that mention me and I haven't read).
+    const mentionRows = chatIds.length
+      ? await prisma.$queryRaw<{ chatId: string; mentionCount: bigint }[]>`
+          SELECT m."chatId" as "chatId", COUNT(*)::bigint as "mentionCount"
+          FROM "MessageMention" mm
+          JOIN "Message" m ON m."id" = mm."messageId"
+          JOIN "ChatMember" cm ON cm."chatId" = m."chatId" AND cm."userId" = ${session.user.id}
+          WHERE m."chatId" IN (${Prisma.join(chatIds)})
+            AND m."createdAt" > cm."lastReadAt"
+            AND mm."userId" = ${session.user.id}
+          GROUP BY m."chatId"
+        `
+      : [];
+    const mentionByChatId = new Map(
+      mentionRows.map((row) => [row.chatId, Number(row.mentionCount)])
+    );
+
     // Read receipts work both ways: if I turned them off I don't see others'
     // reads, and nobody sees the reads of a member who turned them off.
     const memberIds = [...new Set(chats.flatMap((chat) => chat.members.map((m) => m.userId)))];
@@ -88,6 +107,7 @@ export async function GET(req: Request) {
         content: chat.messages[0].content,
         senderId: chat.messages[0].senderId,
         type: chat.messages[0].type,
+        fileName: chat.messages[0].fileName,
         createdAt: chat.messages[0].createdAt.toISOString(),
       } : undefined;
 
@@ -99,6 +119,7 @@ export async function GET(req: Request) {
             : member
         ),
         unreadCount: unreadByChatId.get(chat.id) ?? 0,
+        mentionCount: mentionByChatId.get(chat.id) ?? 0,
         lastMessage,
         messages: undefined,
       };

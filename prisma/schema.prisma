@@ -57,6 +57,10 @@ model User {
   messages Message[]
   chats    ChatMember[]
 
+  // ── Reactions & mentions (additive) ───────────────────────────────
+  messageReactions MessageReaction[]
+  messageMentions  MessageMention[]
+
   // ── Room invite relations (additive) ─────────────────────────────
   sentInvites     RoomInvite[] @relation("SentInvites")
   receivedInvites RoomInvite[] @relation("ReceivedInvites")
@@ -116,6 +120,11 @@ model ChatMember {
   canSend    Boolean        @default(false)
   lastReadAt DateTime       @default(now())
 
+  // ── Per-chat inbox preferences (additive) ─────────────────────────
+  archivedAt      DateTime?
+  mutedUntil      DateTime?
+  lastDeliveredAt DateTime?
+
   user User @relation(fields: [userId], references: [id])
   chat Chat @relation(fields: [chatId], references: [id])
 
@@ -132,6 +141,7 @@ enum MessageType {
   TEXT
   IMAGE
   VIDEO
+  AUDIO
   FILE
 }
 
@@ -155,12 +165,55 @@ model Message {
   parent   Message?  @relation("MessageThread", fields: [parentId], references: [id], onDelete: SetNull)
   replies  Message[] @relation("MessageThread")
 
+  // ── Pins / forwards / previews / mentions (additive) ──────────────
+  pinnedAt    DateTime?
+  pinnedById  String?
+
+  forwardedFromId String?
+  forwardedFrom   Message?  @relation("ForwardedMessages", fields: [forwardedFromId], references: [id], onDelete: SetNull)
+  forwardedTo     Message[] @relation("ForwardedMessages")
+
+  // Cached OpenGraph preview for the first URL in a text message.
+  linkPreview Json?
+
+  mentions MessageMention[]
+  reactions MessageReaction[]
+
   sender User @relation(fields: [senderId], references: [id])
   chat   Chat @relation(fields: [chatId], references: [id])
 
   createdAt DateTime @default(now())
 
   @@index([parentId])
+  @@index([chatId, pinnedAt])
+  @@index([forwardedFromId])
+}
+
+// ── Emoji reactions (additive) ──────────────────────────────────────
+model MessageReaction {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emoji     String
+  createdAt DateTime @default(now())
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+}
+
+// ── Parsed @mentions (additive) ─────────────────────────────────────
+model MessageMention {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([messageId, userId])
+  @@index([userId, createdAt])
 }
 
 // ── Video Call (additive) ─────────────────────────────────────────

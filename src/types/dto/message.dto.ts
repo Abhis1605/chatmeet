@@ -1,6 +1,23 @@
 import type { UserDto } from "./user.dto";
 
-export type MessageType = "TEXT" | "IMAGE" | "VIDEO" | "FILE";
+export type MessageType = "TEXT" | "IMAGE" | "VIDEO" | "AUDIO" | "FILE";
+
+export interface LinkPreviewDto {
+  url: string;
+  title: string | null;
+  description: string | null;
+  image: string | null;
+  siteName: string | null;
+}
+
+export interface MessageReactionDto {
+  emoji: string;
+  userId: string;
+}
+
+export interface MessageMentionDto {
+  userId: string;
+}
 
 // Compact snapshot of the message a reply is quoting.
 export interface MessageParentDto {
@@ -26,6 +43,13 @@ export interface MessageDto {
   chatId: string;
   parentId: string | null;
   parent?: MessageParentDto | null;
+  forwardedFromId?: string | null;
+  forwardedFrom?: MessageParentDto | null;
+  pinnedAt?: string | null;
+  pinnedById?: string | null;
+  linkPreview?: LinkPreviewDto | null;
+  mentions?: MessageMentionDto[];
+  reactions?: MessageReactionDto[];
   _count?: { replies: number };
   sender: UserDto;
   createdAt: string;

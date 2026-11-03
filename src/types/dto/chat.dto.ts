@@ -12,6 +12,9 @@ export interface ChatMemberDto {
   canSend: boolean;
   // null when read receipts are hidden (either side turned them off)
   lastReadAt?: string | null;
+  lastDeliveredAt?: string | null;
+  archivedAt?: string | null;
+  mutedUntil?: string | null;
   user: UserDto;
 }
 
@@ -20,7 +23,8 @@ export interface ChatLastMessage {
   id: string;
   content: string | null;
   senderId: string;
-  type: "TEXT" | "IMAGE" | "VIDEO" | "FILE";
+  type: "TEXT" | "IMAGE" | "VIDEO" | "AUDIO" | "FILE";
+  fileName: string | null;
   createdAt: string;
 }
 
@@ -31,6 +35,7 @@ export interface ChatDto {
   image: string | null;
   isGroup: boolean;
   unreadCount?: number;
+  mentionCount?: number;
   members: ChatMemberDto[];
   lastMessage?: ChatLastMessage;
   createdAt: string;
