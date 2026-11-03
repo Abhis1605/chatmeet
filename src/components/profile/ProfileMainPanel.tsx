@@ -463,21 +463,22 @@ function ToggleRow({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between px-3 py-2 rounded-md bg-surface-soft border border-border">
-      <span className="text-sm text-foreground">{label}</span>
+    <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-md bg-surface-soft border border-border">
+      <span className="min-w-0 text-sm text-foreground">{label}</span>
       <button
         type="button"
         role="switch"
         aria-checked={checked}
+        aria-label={label}
         disabled={disabled}
         onClick={() => onChange(!checked)}
-        className={`relative w-10 h-5 rounded-full transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-soft disabled:opacity-50 disabled:cursor-not-allowed ${
           checked ? "bg-primary" : "bg-border"
         }`}
       >
         <span
-          className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
-            checked ? "translate-x-5" : "translate-x-0"
+          className={`h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+            checked ? "translate-x-4" : "translate-x-0"
           }`}
         />
       </button>

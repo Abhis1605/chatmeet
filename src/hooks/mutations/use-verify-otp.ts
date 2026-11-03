@@ -9,16 +9,26 @@ export function useVerifyOtp() {
   const router = useRouter();
 
   return useMutation({
-    mutationFn: ({ email, otp }: { email: string; otp: string }) =>
-      verifyOtp(email, otp),
+    mutationFn: ({
+      email,
+      otp,
+    }: {
+      email: string;
+      otp: string;
+      callbackUrl?: string;
+    }) => verifyOtp(email, otp),
 
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       if (data.error) {
         showError(data.error);
         return;
       }
       showSuccess("Email verified successfully!");
-      router.push("/login");
+      router.push(
+        variables.callbackUrl
+          ? `/login?callbackUrl=${encodeURIComponent(variables.callbackUrl)}`
+          : "/login"
+      );
     },
 
     onError: () => {

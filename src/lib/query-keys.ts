@@ -11,6 +11,9 @@ export const queryKeys = {
   },
   messages: {
     byChat: (chatId: string) => ["messages", chatId] as const,
+    thread: (chatId: string, messageId: string) =>
+      ["messages", "thread", chatId, messageId] as const,
+    threadAll: ["messages", "thread"] as const,
   },
   users: {
     search: (q: string) => ["users", "search", q] as const,

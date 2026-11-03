@@ -4,17 +4,25 @@ import AuthCard from "@/components/AuthCard";
 import InputField from "@/components/InputField";
 import { useRegister } from "@/hooks/mutations/use-register";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [callbackUrl, setCallbackUrl] = useState<string | undefined>();
 
   const { mutate: register, isPending } = useRegister();
 
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.search).get("callbackUrl");
+    if (raw && raw.startsWith("/") && !raw.startsWith("//")) {
+      setCallbackUrl(raw);
+    }
+  }, []);
+
   const handleRegister = () => {
     if (!email || !password) return;
-    register({ email, password });
+    register({ email, password, callbackUrl });
   };
 
   return (
@@ -57,7 +65,14 @@ export default function RegisterPage() {
 
         <p className="text-center text-sm text-muted mt-6">
           Already have an account?{" "}
-          <Link href="/login" className="text-primary">
+          <Link
+            href={
+              callbackUrl
+                ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
+                : "/login"
+            }
+            className="text-primary"
+          >
             Login
           </Link>
         </p>

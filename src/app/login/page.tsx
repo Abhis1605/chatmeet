@@ -7,16 +7,24 @@ import { signIn } from "next-auth/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuthStore } from "@/store/auth-store";
 
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [callbackUrl, setCallbackUrl] = useState("/chat");
   const { loadingProvider, setLoadingProvider } = useAuthStore();
 
   const router = useRouter()
+
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.search).get("callbackUrl");
+    if (raw && raw.startsWith("/") && !raw.startsWith("//")) {
+      setCallbackUrl(raw);
+    }
+  }, [])
 
   const handleLogin = async () => {
     const trimmedEmail = email.trim();
@@ -36,7 +44,7 @@ export default function LoginPage() {
         }
       }else {
         showSuccess('Logged in successfully')
-        router.push('/chat')
+        router.push(callbackUrl)
       }
     } finally {
       setLoadingProvider(null)
@@ -46,7 +54,7 @@ export default function LoginPage() {
   const handleOAuth = async (provider: "google" | "github") => {
     setLoadingProvider(provider);
 
-    const res = await signIn(provider, { callbackUrl: "/chat?login=success" });
+    const res = await signIn(provider, { callbackUrl });
   };
 
   return (
@@ -157,7 +165,10 @@ export default function LoginPage() {
         {/* Footer */}
         <p className="text-center text-sm text-muted mt-6">
           Don’t have an account?{" "}
-          <Link href="/register" className="text-primary">
+          <Link
+            href={`/register?callbackUrl=${encodeURIComponent(callbackUrl)}`}
+            className="text-primary"
+          >
             Create Account
           </Link>
         </p>

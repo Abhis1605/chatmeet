@@ -7,6 +7,7 @@ import { useActiveCall } from "@/hooks/queries/use-active-call";
 import { useStartCall } from "@/hooks/mutations/use-start-call";
 import { getCallToken } from "@/services/call.service";
 import CallRoomView from "./CallRoomView";
+import type { CallMediaType } from "@/types/dto/call.dto";
 
 /**
  * VideoCallMainPanel — the main-content-area counterpart to VideoCallListPanel.
@@ -24,6 +25,7 @@ export default function VideoCallMainPanel() {
     token: string;
     userName: string;
     isStarter: boolean;
+    mediaType: CallMediaType;
   } | null>(null);
   const [joinLoading, setJoinLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,8 +39,8 @@ export default function VideoCallMainPanel() {
     setJoinLoading(true);
     setError(null);
     try {
-      const { token, userName } = await getCallToken(sessionId);
-      setJoinState({ token, userName, isStarter });
+      const { token, userName, mediaType } = await getCallToken(sessionId);
+      setJoinState({ token, userName, isStarter, mediaType });
     } catch {
       setError("Could not join the call. Please try again.");
     } finally {
@@ -49,12 +51,15 @@ export default function VideoCallMainPanel() {
   const handleStart = () => {
     if (!activeChatId) return;
     setError(null);
-    startCallMutation(activeChatId, {
-      onSuccess: (result) => {
-        joinSession(result.callSessionId, true);
-      },
-      onError: () => setError("Could not start the call. Please try again."),
-    });
+    startCallMutation(
+      { chatId: activeChatId, mediaType: "VIDEO" },
+      {
+        onSuccess: (result) => {
+          joinSession(result.callSessionId, true);
+        },
+        onError: () => setError("Could not start the call. Please try again."),
+      }
+    );
   };
 
   const handleJoin = () => {
@@ -78,6 +83,7 @@ export default function VideoCallMainPanel() {
         token={joinState.token}
         userName={joinState.userName}
         isStarter={joinState.isStarter}
+        mediaType={joinState.mediaType}
         onLeave={resetJoinState}
       />
     );

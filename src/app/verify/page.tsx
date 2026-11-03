@@ -22,6 +22,7 @@ function VerifyPageContent() {
 
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "";
+  const callbackUrl = searchParams.get("callbackUrl") || undefined;
 
   const { mutate: verifyOtp, isPending: isVerifying } = useVerifyOtp();
   const { mutate: resendOtp, isPending: isResending } = useResendOtp();
@@ -37,7 +38,7 @@ function VerifyPageContent() {
   }, [timer]);
 
   const handleVerify = () => {
-    verifyOtp({ email, otp });
+    verifyOtp({ email, otp, callbackUrl });
   };
 
   const handleResend = () => {

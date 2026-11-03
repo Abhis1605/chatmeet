@@ -9,11 +9,19 @@ export function useSendInvite() {
     mutationFn: ({
       chatId,
       invitedUserId,
+      email,
     }: {
       chatId: string;
-      invitedUserId: string;
-    }) => sendInvite(chatId, invitedUserId),
-    onSuccess: () => showSuccess("Invite sent"),
+      invitedUserId?: string;
+      email?: string;
+    }) => sendInvite(chatId, { invitedUserId, email }),
+    onSuccess: (data) => {
+      if (data.warning) {
+        showError(data.warning);
+        return;
+      }
+      showSuccess(data.emailSent ? "Invite email sent" : "Invite sent");
+    },
     onError: (error: { response?: { data?: { error?: string } } }) => {
       showError(error.response?.data?.error ?? "Failed to send invite.");
     },

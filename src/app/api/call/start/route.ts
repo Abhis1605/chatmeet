@@ -13,8 +13,9 @@ export async function POST(req: Request) {
         }
 
         const body = await req.json()
-        const { chatId, type: rawType } = body
+        const { chatId, type: rawType, mediaType: rawMediaType } = body
         const callType: string = rawType === 'GROUP' ? 'GROUP' : 'ONE_TO_ONE'
+        const callMediaType: string = rawMediaType === 'AUDIO' ? 'AUDIO' : 'VIDEO'
 
         if (!chatId || typeof chatId !== 'string') {
             return Response.json({ error: 'chatId is required' }, { status: 400 })
@@ -41,6 +42,7 @@ export async function POST(req: Request) {
                 hmsRoomId: existing.hmsRoomId,
                 status: existing.status,
                 type: existing.type,
+                mediaType: existing.mediaType,
             })
         }
 
@@ -63,6 +65,7 @@ export async function POST(req: Request) {
                     chatId,
                     hmsRoomId,
                     type: callType,
+                    mediaType: callMediaType,
                     status: 'ACTIVE',
                     startedById: session.user.id,
                     participants: {
@@ -89,6 +92,7 @@ export async function POST(req: Request) {
                 chatId,
                 hmsRoomId: callSession.hmsRoomId,
                 type: callType,
+                mediaType: callSession.mediaType,
                 startedById: session.user.id,
                 startedByName: session.user.name || session.user.email,
             },
@@ -100,6 +104,7 @@ export async function POST(req: Request) {
             hmsRoomId: callSession.hmsRoomId,
             status: callSession.status,
             type: callSession.type,
+            mediaType: callSession.mediaType,
         })
     } catch (error) {
         console.error(error)

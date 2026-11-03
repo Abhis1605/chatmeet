@@ -38,7 +38,7 @@ export async function POST(req: Request) {
             ...memberIds.map((userId) => ({
               userId,
               role: GROUP_ROLES.MEMBER,
-              canSend: false,
+              canSend: true,
             })),
           ],
         },

@@ -81,7 +81,7 @@ export async function POST(
         userId,
         chatId,
         role: GROUP_ROLES.MEMBER,
-        canSend: false,
+        canSend: true,
       },
       update: {},
     });
@@ -142,7 +142,7 @@ export async function PATCH(
 
     if (role === GROUP_ROLES.ADMIN || role === GROUP_ROLES.MEMBER) {
       data.role = role;
-      data.canSend = role === GROUP_ROLES.ADMIN ? true : canSend ?? false;
+      data.canSend = role === GROUP_ROLES.ADMIN ? true : canSend ?? true;
     } else if (canSend !== undefined) {
       data.canSend = canSend;
     }

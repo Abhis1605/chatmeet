@@ -11,22 +11,53 @@ import ProfileMainPanel from "@/components/profile/ProfileMainPanel";
 import SettingsMainPanel from "@/components/settings/SettingsMainPanel";
 import Spinner from "@/components/Spinner";
 import { useChatUIStore } from "@/store/chat-ui-store";
+import { queryKeys } from "@/lib/query-keys";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { useLogout } from "@/hooks/use-logout";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function ChatPage() {
-  const { activeTab, activeChatId, activeRoomChatId, mobilePanel, setMobilePanel } = useChatUIStore();
+  const {
+    activeTab,
+    activeChatId,
+    activeRoomChatId,
+    mobilePanel,
+    setMobilePanel,
+    setActiveRoomChatId,
+    setActiveTab,
+  } = useChatUIStore();
   const { status } = useSession();
   const { handleLogoutClick } = useLogout();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.replace(`/login?callbackUrl=${encodeURIComponent("/chat")}`);
     }
   }, [router, status]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+
+    const roomId = new URLSearchParams(window.location.search).get("room");
+    if (!roomId) return;
+
+    queryClient.invalidateQueries({ queryKey: queryKeys.chats.room() });
+    setActiveRoomChatId(roomId);
+    setActiveTab("room");
+    setMobilePanel("detail");
+    router.replace("/chat");
+  }, [
+    queryClient,
+    router,
+    setActiveRoomChatId,
+    setActiveTab,
+    setMobilePanel,
+    status,
+  ]);
 
   if (status !== "authenticated") {
     return (

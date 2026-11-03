@@ -1,8 +1,11 @@
+export type CallMediaType = "VIDEO" | "AUDIO";
+
 export interface CallSessionDto {
   id: string;
   chatId: string;
   hmsRoomId: string;
   type: "ONE_TO_ONE" | "GROUP" | string;
+  mediaType: CallMediaType;
   status: string;
   startedById: string;
   startedAt: string;
@@ -14,12 +17,14 @@ export interface StartCallResponse {
   hmsRoomId: string;
   status: string;
   type: "ONE_TO_ONE" | "GROUP" | string;
+  mediaType: CallMediaType;
 }
 
 export interface CallTokenResponse {
   token: string;
   hmsRoomId: string;
   userName: string;
+  mediaType: CallMediaType;
 }
 
 // ── Call History DTOs (additive) ─────────────────────────────────────────────

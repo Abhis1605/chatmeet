@@ -254,7 +254,7 @@ io.on('connection', (socket: CustomSocket) => {
         }
     })
 
-    socket.on('send-message', async ({ chatId, content, type, fileUrl, fileName, fileType, fileSize }: { chatId: string, content?: string, type: 'TEXT' | 'IMAGE' | 'FILE' | 'VIDEO', fileUrl?: string, fileName?: string, fileType?: string, fileSize?: number }) => {
+    socket.on('send-message', async ({ chatId, content, type, fileUrl, fileName, fileType, fileSize, parentId: rawParentId }: { chatId: string, content?: string, type: 'TEXT' | 'IMAGE' | 'FILE' | 'VIDEO', fileUrl?: string, fileName?: string, fileType?: string, fileSize?: number, parentId?: string }) => {
         try {
             if (!chatId) return
 
@@ -286,12 +286,25 @@ io.on('connection', (socket: CustomSocket) => {
                 return
             }
 
+            // A reply must quote a message in the same chat. If the quoted
+            // message is itself a reply, flatten it to its thread root so
+            // threads never nest more than one level.
+            let parentId: string | undefined
+            if (typeof rawParentId === 'string' && rawParentId) {
+                const parent = await prisma.message.findFirst({
+                    where: { id: rawParentId, chatId },
+                    select: { id: true, parentId: true },
+                })
+                parentId = parent ? (parent.parentId ?? parent.id) : undefined
+            }
+
             const message = await prisma.message.create({
                 data: {
                     chatId,
                     senderId: socket.user!.id,
                     type,
                     content,
+                    parentId,
 
                     fileUrl,
                     fileName,
@@ -299,7 +312,19 @@ io.on('connection', (socket: CustomSocket) => {
                     fileSize,
                 },
                 include: {
-                    sender: { select: publicUserSelect }
+                    sender: { select: publicUserSelect },
+                    parent: {
+                        select: {
+                            id: true,
+                            content: true,
+                            type: true,
+                            fileName: true,
+                            senderId: true,
+                            createdAt: true,
+                            sender: { select: publicUserSelect },
+                        },
+                    },
+                    _count: { select: { replies: true } },
                 }
             })
 

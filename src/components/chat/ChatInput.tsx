@@ -12,6 +12,7 @@ interface ChatInputProps {
   onUpload: (file: any) => void;
   disabled?: boolean;
   placeholder?: string;
+  showAttachments?: boolean;
 }
 
 export default function ChatInput({
@@ -21,6 +22,7 @@ export default function ChatInput({
   onUpload,
   disabled = false,
   placeholder = "Type a message...",
+  showAttachments = true,
 }: ChatInputProps) {
   const [openAttachment, setOpenAttachment] = useState(false);
   const [openEmojiPicker, setOpenEmojiPicker] = useState(false);
@@ -97,16 +99,18 @@ export default function ChatInput({
         </button>
 
         {/* Attachment */}
-        <button
-          type="button"
-          title="Attach file"
-          aria-label="Attach file"
-          disabled={disabled}
-          onClick={() => setOpenAttachment(!openAttachment)}
-          className="p-2 rounded-full hover:bg-surface-soft disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer disabled:cursor-not-allowed"
-        >
-          <Paperclip className="w-5 h-5 text-muted" />
-        </button>
+        {showAttachments && (
+          <button
+            type="button"
+            title="Attach file"
+            aria-label="Attach file"
+            disabled={disabled}
+            onClick={() => setOpenAttachment(!openAttachment)}
+            className="p-2 rounded-full hover:bg-surface-soft disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer disabled:cursor-not-allowed"
+          >
+            <Paperclip className="w-5 h-5 text-muted" />
+          </button>
+        )}
 
         {/* Input */}
 

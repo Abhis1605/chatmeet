@@ -12,6 +12,8 @@ interface Props {
   isLoadingMore?: boolean;
   onEditMessage?: (message: any) => void;
   onDeleteMessage?: (message: any) => void;
+  onReplyMessage?: (message: any) => void;
+  onOpenThread?: (message: any) => void;
   // 1:1 chats: when the other person last read the chat (null = receipts hidden)
   otherReadAt?: string | null;
   groupSeenByCount?: number;
@@ -27,6 +29,8 @@ export default function MessageList({
   isLoadingMore = false,
   onEditMessage,
   onDeleteMessage,
+  onReplyMessage,
+  onOpenThread,
   otherReadAt = null,
   groupSeenByCount,
   groupRecipientCount = 0,
@@ -46,6 +50,13 @@ export default function MessageList({
         ? "Seen"
         : "Sent"
       : null;
+
+  const replyCounts = new Map<string, number>();
+  for (const message of messages) {
+    if (message.parentId) {
+      replyCounts.set(message.parentId, (replyCounts.get(message.parentId) ?? 0) + 1);
+    }
+  }
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
@@ -110,12 +121,19 @@ export default function MessageList({
         <div className="text-center text-muted text-xs">Loading older messages...</div>
       )}
 
-      {messages.map((message) => (
+      {messages.map((message) => {
+        const loadedReplyCount = replyCounts.get(message.id) ?? 0;
+        const serverReplyCount =
+          typeof message._count?.replies === "number" ? message._count.replies : 0;
+        return (
         <div key={message.id}>
           <MessageBubble
             message={message}
             isMe={message.senderId === session?.user?.id}
             showSender={isGroup}
+            replyCount={Math.max(loadedReplyCount, serverReplyCount)}
+            onReply={onReplyMessage}
+            onOpenThread={onOpenThread}
             onEdit={onEditMessage}
             onDelete={onDeleteMessage}
           />
@@ -129,7 +147,8 @@ export default function MessageList({
             </p>
           )}
         </div>
-      ))}
+        );
+      })}
 
       <div ref={bottomRef} />
     </div>

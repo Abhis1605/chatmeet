@@ -69,6 +69,7 @@ export async function POST(
             token,
             hmsRoomId: callSession.hmsRoomId,
             userName,
+            mediaType: callSession.mediaType,
         })
     } catch (error) {
         console.error(error)

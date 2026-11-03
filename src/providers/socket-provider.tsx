@@ -11,12 +11,17 @@ import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { Socket } from "socket.io-client";
 import { connectSocket } from "@/lib/socket";
 import { queryKeys } from "@/lib/query-keys";
-import type { MessageDto, MessagesPage } from "@/types/dto/message.dto";
+import type { MessageDto, MessagesPage, ThreadPage } from "@/types/dto/message.dto";
 import type { ChatDto } from "@/types/dto/chat.dto";
 import type { RoomDto } from "@/types/dto/room.dto";
 import { useSocketStore } from "@/store/socket-store";
 import { useChatUIStore } from "@/store/chat-ui-store";
 import { toast } from "sonner";
+import type { SettingsDto } from "@/types/dto/settings.dto";
+import {
+  playNotificationSound,
+  primeNotificationSound,
+} from "@/lib/notification-sound";
 
 interface SocketContextValue {
   socket: Socket | null;
@@ -50,6 +55,10 @@ export default function SocketProvider({
     socket.on("connect", () => setConnected(true));
     socket.on("disconnect", () => setConnected(false));
 
+    // Browsers only allow audio to start from a user gesture. Prime the
+    // AudioContext on the first interaction so later message sounds play.
+    window.addEventListener("pointerdown", primeNotificationSound, { once: true });
+
     // ── new-message: append to React Query cache, never Zustand ─────────
     const handleNewMessage = (msg: MessageDto) => {
       // Update messages cache for the specific chat.
@@ -79,9 +88,34 @@ export default function SocketProvider({
             ? withoutOptimistic
             : [...withoutOptimistic, msg];
 
+          const nextFirstPage = { ...firstPage, messages };
+
+          if (!msg.parentId || alreadyExists) {
+            return {
+              ...prev,
+              pages: [nextFirstPage, ...restPages],
+            };
+          }
+
+          // Keep the quoted parent's reply count in sync for the thread link.
+          // The parent may live on an older page, so patch every page.
+          const bumpCount = (m: MessageDto) =>
+            m.id === msg.parentId
+              ? {
+                  ...m,
+                  _count: { replies: (m._count?.replies ?? 0) + 1 },
+                }
+              : m;
+
           return {
             ...prev,
-            pages: [{ ...firstPage, messages }, ...restPages],
+            pages: [
+              { ...nextFirstPage, messages: nextFirstPage.messages.map(bumpCount) },
+              ...restPages.map((page) => ({
+                ...page,
+                messages: page.messages.map(bumpCount),
+              })),
+            ],
           };
 
         }
@@ -155,9 +189,104 @@ export default function SocketProvider({
             );
         }
       );
+
+      if (msg.parentId) {
+        queryClient.setQueryData<ThreadPage>(
+          queryKeys.messages.thread(msg.chatId, msg.parentId),
+          (prev) => {
+            if (!prev) {
+              return prev;
+            }
+            const replies = prev.replies.filter(
+              (reply) =>
+                reply.id !== msg.id &&
+                !(
+                  (reply as MessageDto & { _isOptimistic?: boolean })._isOptimistic &&
+                  reply.content === msg.content &&
+                  reply.senderId === msg.senderId &&
+                  reply.parentId === msg.parentId
+                )
+            );
+            return { ...prev, replies: [...replies, msg] };
+          }
+        );
+      }
+
+      // ── Toast + sound for messages that arrive outside the open chat ──
+      if (msg.senderId !== sessionUserId) {
+        const settings = queryClient.getQueryData<SettingsDto>(queryKeys.settings.me);
+        const muted = settings?.notificationsMuted ?? false;
+        const shouldNotify =
+          !muted && (isUnread || document.visibilityState !== "visible");
+
+        if (shouldNotify) {
+          const roomChats =
+            queryClient.getQueryData<RoomDto[]>(queryKeys.chats.room()) ?? [];
+          const room = roomChats.find((r) => r.id === msg.chatId);
+
+          let isGroup = false;
+          let chatLabel: string | null = null;
+          if (room) {
+            chatLabel = room.name;
+          } else {
+            for (const type of ["personal", "group"] as const) {
+              const chats =
+                queryClient.getQueryData<ChatDto[]>(queryKeys.chats.list(type)) ?? [];
+              const chat = chats.find((c) => c.id === msg.chatId);
+              if (chat) {
+                isGroup = chat.isGroup;
+                chatLabel = chat.isGroup ? chat.name : null;
+                break;
+              }
+            }
+          }
+
+          const senderName = msg.sender?.name ?? "Someone";
+          const title =
+            room || isGroup
+              ? `${senderName} · ${chatLabel ?? "Chat"}`
+              : senderName;
+          const preview =
+            msg.type === "IMAGE"
+              ? "Sent a photo"
+              : msg.type === "VIDEO"
+                ? "Sent a video"
+                : msg.type === "FILE"
+                  ? "Sent a file"
+                  : (msg.content ?? "New message");
+
+          if (settings?.notificationSound ?? true) {
+            playNotificationSound();
+          }
+
+          if (settings?.notificationToast ?? true) {
+            toast(title, {
+              id: `message-${msg.id}`,
+              description:
+                preview.length > 120 ? `${preview.slice(0, 117)}…` : preview,
+              action: {
+                label: "Open",
+                onClick: () => {
+                  const ui = useChatUIStore.getState();
+                  if (room) {
+                    ui.setActiveRoomChatId(msg.chatId);
+                    ui.setActiveTab("room");
+                  } else {
+                    ui.setActiveChatId(msg.chatId);
+                    ui.setActiveTab(isGroup ? "group" : "personal");
+                  }
+                  ui.setMobilePanel("detail");
+                },
+              },
+              duration: 6000,
+            });
+          }
+        }
+      }
     };
 
     const handleMessageUpdated = (msg: MessageDto) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.messages.threadAll });
       queryClient.setQueryData<InfiniteData<MessagesPage>>(
         queryKeys.messages.byChat(msg.chatId),
         (prev) => {
@@ -176,15 +305,32 @@ export default function SocketProvider({
     };
 
     const handleMessageDeleted = (data: { id: string; chatId: string }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.messages.threadAll });
       queryClient.setQueryData<InfiniteData<MessagesPage>>(
         queryKeys.messages.byChat(data.chatId),
         (prev) => {
           if (!prev) return prev;
+
+          const deleted = prev.pages
+            .flatMap((page) => page.messages)
+            .find((message) => message.id === data.id);
+          const parentId = deleted?.parentId ?? null;
+
+          const decrement = (message: MessageDto) =>
+            parentId && message.id === parentId && message._count
+              ? {
+                  ...message,
+                  _count: { replies: Math.max(0, message._count.replies - 1) },
+                }
+              : message;
+
           return {
             ...prev,
             pages: prev.pages.map((page) => ({
               ...page,
-              messages: page.messages.filter((message) => message.id !== data.id),
+              messages: page.messages
+                .filter((message) => message.id !== data.id)
+                .map(decrement),
             })),
           };
         }
@@ -373,23 +519,44 @@ export default function SocketProvider({
       sessionId: string;
       chatId: string;
       type: string;
+      mediaType?: string;
       startedByName: string;
     }) => {
-      const mySettings = queryClient.getQueryData<{ notificationsMuted?: boolean; notificationToast?: boolean }>(
-        queryKeys.settings.me
-      );
-      if (mySettings?.notificationsMuted || mySettings?.notificationToast === false) return;
+      const mySettings = queryClient.getQueryData<SettingsDto>(queryKeys.settings.me);
+      if (mySettings?.notificationsMuted) return;
       queryClient.invalidateQueries({ queryKey: queryKeys.calls.active(data.chatId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.calls.history });
+      if (mySettings?.notificationSound ?? true) playNotificationSound();
+      if (mySettings?.notificationToast === false) return;
 
-      const callType = data.type === "GROUP" ? "Group call" : "Video call";
+      const isAudio = data.mediaType === "AUDIO";
+      const isGroup = data.type === "GROUP";
+      const callType = isAudio
+        ? isGroup
+          ? "Group voice call"
+          : "Voice call"
+        : isGroup
+          ? "Group video call"
+          : "Video call";
+
       toast(`${callType} started by ${data.startedByName}`, {
-        description: "Switch to the Video Call tab to join.",
+        description: "Open the chat and tap Join to enter the call.",
         action: {
-          label: "Join",
+          label: "Open",
           onClick: () => {
-            useChatUIStore.getState().setActiveChatId(data.chatId);
-            useChatUIStore.getState().setActiveTab("video");
+            const ui = useChatUIStore.getState();
+            const rooms =
+              queryClient.getQueryData<RoomDto[]>(queryKeys.chats.room()) ?? [];
+            const isRoom = rooms.some((room) => room.id === data.chatId);
+
+            if (isRoom) {
+              ui.setActiveRoomChatId(data.chatId);
+              ui.setActiveTab("room");
+            } else {
+              ui.setActiveChatId(data.chatId);
+              ui.setActiveTab(isGroup ? "group" : "personal");
+            }
+            ui.setMobilePanel("detail");
           },
         },
         duration: 10000,
@@ -433,6 +600,7 @@ export default function SocketProvider({
     window.addEventListener("beforeunload", handleUnload);
 
     return () => {
+      window.removeEventListener("pointerdown", primeNotificationSound);
       window.removeEventListener("pagehide", handleUnload);
       window.removeEventListener("beforeunload", handleUnload);
       socket.off("connect");

@@ -9,8 +9,14 @@ export function useRegister() {
   const router = useRouter();
 
   return useMutation({
-    mutationFn: ({ email, password }: { email: string; password: string }) =>
-      registerUser(email, password),
+    mutationFn: ({
+      email,
+      password,
+    }: {
+      email: string;
+      password: string;
+      callbackUrl?: string;
+    }) => registerUser(email, password),
 
     onSuccess: (data, variables) => {
       if (data.error) {
@@ -18,7 +24,11 @@ export function useRegister() {
         return;
       }
       showSuccess("Account created! OTP sent to your email.");
-      router.push(`/verify?email=${variables.email}`);
+      const params = new URLSearchParams({ email: variables.email });
+      if (variables.callbackUrl) {
+        params.set("callbackUrl", variables.callbackUrl);
+      }
+      router.push(`/verify?${params.toString()}`);
     },
 
     onError: () => {

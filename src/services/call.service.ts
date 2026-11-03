@@ -1,6 +1,7 @@
 import apiClient from "@/lib/axios";
 import type {
   CallHistoryPageDto,
+  CallMediaType,
   CallSessionDto,
   CallTokenResponse,
   StartCallResponse,
@@ -11,14 +12,16 @@ import type {
  * Matches existing API route signatures exactly (read from src/app/api/call/**).
  */
 
-// POST /api/call/start — body: { chatId, type? }
+// POST /api/call/start — body: { chatId, type?, mediaType? }
 export async function startCall(
   chatId: string,
-  type: "ONE_TO_ONE" | "GROUP" = "ONE_TO_ONE"
+  type: "ONE_TO_ONE" | "GROUP" = "ONE_TO_ONE",
+  mediaType: CallMediaType = "VIDEO"
 ): Promise<StartCallResponse> {
   const { data } = await apiClient.post<StartCallResponse>("/call/start", {
     chatId,
     type,
+    mediaType,
   });
   return data;
 }

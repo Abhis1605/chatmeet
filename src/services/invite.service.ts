@@ -6,14 +6,21 @@ import type { PendingInviteDto } from "@/types/dto/room.dto";
  * Completely independent of chat.service.ts.
  */
 
-// POST /api/room/:chatId/invite — { invitedUserId }
+export interface SendInviteResponse {
+  success: boolean;
+  emailSent?: boolean;
+  warning?: string;
+  inviteId?: string;
+}
+
+// POST /api/room/:chatId/invite — { invitedUserId?, email? }
 export async function sendInvite(
   chatId: string,
-  invitedUserId: string
-): Promise<{ success: boolean }> {
-  const { data } = await apiClient.post<{ success: boolean }>(
+  payload: { invitedUserId?: string; email?: string }
+): Promise<SendInviteResponse> {
+  const { data } = await apiClient.post<SendInviteResponse>(
     `/room/${chatId}/invite`,
-    { invitedUserId }
+    payload
   );
   return data;
 }

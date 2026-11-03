@@ -3,7 +3,12 @@
 import { useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { useSocketContext } from "@/providers/socket-provider";
-import type { SendMessagePayload, OptimisticMessage, MessagesPage } from "@/types/dto/message.dto";
+import type {
+  SendMessagePayload,
+  OptimisticMessage,
+  MessagesPage,
+  ThreadPage,
+} from "@/types/dto/message.dto";
 import { useSession } from "next-auth/react";
 import { showError } from "@/lib/toast";
 
@@ -39,6 +44,17 @@ export function useSendMessage() {
         queryKeys.messages.byChat(payload.chatId)
       );
 
+      const cachedMessages =
+        previousMessages?.pages.flatMap((page) => page.messages) ?? [];
+      const findMessage = (id: string) =>
+        cachedMessages.find((message) => message.id === id);
+      const quotedMessage = payload.parentId
+        ? findMessage(payload.parentId)
+        : undefined;
+      const threadRoot = quotedMessage?.parentId
+        ? (findMessage(quotedMessage.parentId) ?? quotedMessage)
+        : quotedMessage;
+
       // Create optimistic message
       const optimisticMsg: OptimisticMessage = {
         id: `temp-${Date.now()}`,
@@ -51,6 +67,18 @@ export function useSendMessage() {
         fileSize: payload.fileSize || null,
         senderId: session?.user?.id || "",
         sender: session?.user as any,
+        parentId: threadRoot?.id ?? null,
+        parent: threadRoot
+          ? {
+              id: threadRoot.id,
+              content: threadRoot.content,
+              type: threadRoot.type,
+              fileName: threadRoot.fileName,
+              senderId: threadRoot.senderId,
+              sender: threadRoot.sender,
+              createdAt: threadRoot.createdAt,
+            }
+          : null,
         createdAt: new Date().toISOString(),
         _isOptimistic: true,
       };
@@ -71,7 +99,28 @@ export function useSendMessage() {
         }
       );
 
-      return { previousMessages, chatId: payload.chatId };
+      const threadKey = threadRoot
+        ? queryKeys.messages.thread(payload.chatId, threadRoot.id)
+        : null;
+      const previousThread = threadKey
+        ? queryClient.getQueryData<ThreadPage>(threadKey)
+        : undefined;
+
+      if (threadKey && previousThread) {
+        queryClient.setQueryData<ThreadPage>(threadKey, (prev) => {
+          if (!prev || prev.replies.some((reply) => reply.id === optimisticMsg.id)) {
+            return prev;
+          }
+          return { ...prev, replies: [...prev.replies, optimisticMsg] };
+        });
+      }
+
+      return {
+        previousMessages,
+        previousThread,
+        threadKey,
+        chatId: payload.chatId,
+      };
     },
 
     onError: (err, _variables, context) => {
@@ -80,6 +129,9 @@ export function useSendMessage() {
           queryKeys.messages.byChat(context.chatId),
           context.previousMessages
         );
+      }
+      if (context?.threadKey && context.previousThread) {
+        queryClient.setQueryData(context.threadKey, context.previousThread);
       }
       showError("Failed to send message: " + err.message);
     },

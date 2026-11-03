@@ -1,10 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowLeft, Users, Video } from "lucide-react";
-import { startCall } from "@/services/call.service";
-import { toast } from "sonner";
+import { ArrowLeft, Users } from "lucide-react";
 import { getAvatarSrc } from "@/lib/avatars";
+import CallLauncher from "@/components/call/CallLauncher";
 
 interface ChatHeaderProps {
   otherUser: any;
@@ -27,23 +25,6 @@ export default function ChatHeader({
   const subtitle = chat?.isGroup
     ? `${chat.members?.length ?? 0} members`
     : presenceLabel;
-
-  const [isStartingCall, setIsStartingCall] = useState(false);
-
-  const handleGroupVideoCall = async () => {
-    if (!chat?.id || isStartingCall) return;
-    setIsStartingCall(true);
-    try {
-      await startCall(chat.id, "GROUP");
-      // The call-incoming socket event is emitted server-side to other members.
-      // For the caller, navigate to the video call tab so they can join.
-      toast.success("Group call started! Switch to Video Call to join.");
-    } catch {
-      toast.error("Failed to start group call. Please try again.");
-    } finally {
-      setIsStartingCall(false);
-    }
-  };
 
   return (
     <div className="flex min-h-16 items-center gap-2 border-b border-border bg-surface px-3 sm:h-18 sm:gap-3 sm:px-5">
@@ -86,31 +67,23 @@ export default function ChatHeader({
         </span>
       </div>
 
-      {chat?.isGroup && (
-        <>
-          {/* Group video call button — additive, does not affect personal chat header */}
-          <button
-            id="group-video-call-btn"
-            type="button"
-            title="Start group video call"
-            aria-label="Start group video call"
-            onClick={handleGroupVideoCall}
-            disabled={isStartingCall}
-            className="p-2 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Video className="w-5 h-5" />
-          </button>
+      {chat?.id && (
+        <CallLauncher
+          chatId={chat.id}
+          callType={chat.isGroup ? "GROUP" : "ONE_TO_ONE"}
+        />
+      )}
 
-          <button
-            type="button"
-            title="Manage group"
-            aria-label="Manage group"
-            onClick={onManageGroup}
-            className="p-2 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition cursor-pointer"
-          >
-            <Users className="w-5 h-5" />
-          </button>
-        </>
+      {chat?.isGroup && (
+        <button
+          type="button"
+          title="Manage group"
+          aria-label="Manage group"
+          onClick={onManageGroup}
+          className="p-2 rounded-md text-muted hover:bg-surface-soft hover:text-foreground transition cursor-pointer"
+        >
+          <Users className="w-5 h-5" />
+        </button>
       )}
     </div>
   );

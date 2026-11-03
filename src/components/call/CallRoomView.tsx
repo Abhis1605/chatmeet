@@ -14,12 +14,14 @@ import {
 import type { HMSPeer } from "@100mslive/react-sdk";
 import { Mic, MicOff, Video, VideoOff, PhoneOff, LogOut, MonitorUp, MonitorStop } from "lucide-react";
 import { useEndCall } from "@/hooks/mutations/use-end-call";
+import type { CallMediaType } from "@/types/dto/call.dto";
 
 interface CallRoomViewProps {
   sessionId: string;
   token: string;
   userName: string;
   isStarter: boolean;
+  mediaType?: CallMediaType;
   onLeave: () => void;
 }
 
@@ -44,6 +46,28 @@ function PeerTile({ peer }: { peer: HMSPeer }) {
   );
 }
 
+function AudioPeerTile({ peer }: { peer: HMSPeer }) {
+  const initials =
+    peer.name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "?";
+
+  return (
+    <div className="relative flex aspect-video items-center justify-center overflow-hidden rounded-lg border border-border bg-surface-soft">
+      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary-soft text-2xl font-semibold text-primary">
+        {initials}
+      </div>
+      <span className="absolute bottom-2 left-2 rounded bg-black/50 px-2 py-0.5 text-xs text-white">
+        {peer.name} {peer.isLocal && "(You)"}
+      </span>
+      <Mic className="absolute bottom-2 right-2 h-4 w-4 text-green-400" aria-hidden="true" />
+    </div>
+  );
+}
+
 function ScreenShareTile({ trackId, name }: { trackId: string; name: string }) {
   const { videoRef } = useVideo({ trackId });
 
@@ -57,7 +81,15 @@ function ScreenShareTile({ trackId, name }: { trackId: string; name: string }) {
   );
 }
 
-function CallRoomInner({ sessionId, token, userName, isStarter, onLeave }: CallRoomViewProps) {
+function CallRoomInner({
+  sessionId,
+  token,
+  userName,
+  isStarter,
+  mediaType = "VIDEO",
+  onLeave,
+}: CallRoomViewProps) {
+  const isAudioCall = mediaType === "AUDIO";
   const [joinError, setJoinError] = useState<string | null>(null);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
@@ -72,11 +104,12 @@ function CallRoomInner({ sessionId, token, userName, isStarter, onLeave }: CallR
     toggleVideo,
   } = useAVToggle((error) => {
     console.error("Call media control failed:", error);
+    const device = isAudioCall ? "microphone" : "camera";
     if (error.message.includes("Device in use") || error.name === "DeviceInUse") {
-      setMediaError("Your camera is being used by another app or browser tab. Close it there, then try again.");
+      setMediaError(`Your ${device} is being used by another app or browser tab. Close it there, then try again.`);
       return;
     }
-    setMediaError("Your camera could not be accessed. Check browser permissions and try again.");
+    setMediaError(`Your ${device} could not be accessed. Check browser permissions and try again.`);
   });
   const {
     amIScreenSharing,
@@ -104,7 +137,16 @@ function CallRoomInner({ sessionId, token, userName, isStarter, onLeave }: CallR
       if (cancelled) return;
 
       try {
-        await hmsActions.join({ userName, authToken: token });
+        await hmsActions.join({
+          userName,
+          authToken: token,
+          ...(isAudioCall
+            ? {
+                settings: { isVideoMuted: true },
+                autoVideoSubscribe: false,
+              }
+            : {}),
+        });
       } catch (error) {
         console.error("Failed to join call:", error);
         setJoinError("Could not join the call. Please try again.");
@@ -197,14 +239,18 @@ function CallRoomInner({ sessionId, token, userName, isStarter, onLeave }: CallR
             {shareError}
           </p>
         )}
-        {screenShareVideoTrackId && screenSharingPeerName && (
+        {!isAudioCall && screenShareVideoTrackId && screenSharingPeerName && (
           <div className="col-span-full">
             <ScreenShareTile trackId={screenShareVideoTrackId} name={screenSharingPeerName} />
           </div>
         )}
-        {peers.map((peer) => (
-          <PeerTile key={peer.id} peer={peer} />
-        ))}
+        {peers.map((peer) =>
+          isAudioCall ? (
+            <AudioPeerTile key={peer.id} peer={peer} />
+          ) : (
+            <PeerTile key={peer.id} peer={peer} />
+          )
+        )}
       </div>
 
       <div className="flex items-center justify-center gap-3 p-4 border-t border-border flex-wrap">
@@ -218,29 +264,33 @@ function CallRoomInner({ sessionId, token, userName, isStarter, onLeave }: CallR
           {isLocalAudioEnabled ? <Mic size={18} /> : <MicOff size={18} />}
         </button>
 
-        <button
-          type="button"
-          onClick={handleScreenShare}
-          disabled={!toggleScreenShare || isTogglingScreenShare}
-          title={amIScreenSharing ? "Stop sharing screen" : "Share screen"}
-          className={`p-3 rounded-full transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-            amIScreenSharing
-              ? "bg-primary text-on-primary hover:bg-primary-hover"
-              : "border border-border bg-surface-soft text-foreground hover:bg-primary-soft"
-          }`}
-        >
-          {amIScreenSharing ? <MonitorStop size={18} /> : <MonitorUp size={18} />}
-        </button>
+        {!isAudioCall && (
+          <>
+            <button
+              type="button"
+              onClick={handleScreenShare}
+              disabled={!toggleScreenShare || isTogglingScreenShare}
+              title={amIScreenSharing ? "Stop sharing screen" : "Share screen"}
+              className={`p-3 rounded-full transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                amIScreenSharing
+                  ? "bg-primary text-on-primary hover:bg-primary-hover"
+                  : "border border-border bg-surface-soft text-foreground hover:bg-primary-soft"
+              }`}
+            >
+              {amIScreenSharing ? <MonitorStop size={18} /> : <MonitorUp size={18} />}
+            </button>
 
-        <button
-          type="button"
-          onClick={toggleVideo}
-          disabled={!toggleVideo}
-          title={isLocalVideoEnabled ? "Turn camera off" : "Turn camera on"}
-          className="p-3 rounded-full border border-border bg-surface-soft text-foreground hover:bg-primary-soft transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isLocalVideoEnabled ? <Video size={18} /> : <VideoOff size={18} />}
-        </button>
+            <button
+              type="button"
+              onClick={toggleVideo}
+              disabled={!toggleVideo}
+              title={isLocalVideoEnabled ? "Turn camera off" : "Turn camera on"}
+              className="p-3 rounded-full border border-border bg-surface-soft text-foreground hover:bg-primary-soft transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLocalVideoEnabled ? <Video size={18} /> : <VideoOff size={18} />}
+            </button>
+          </>
+        )}
 
         <button
           type="button"

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "cmdk";
-import { Check, Pencil, Trash2, UserPlus, X } from "lucide-react";
+import { Check, Mail, Pencil, Trash2, UserPlus, X } from "lucide-react";
 import type { RoomDto } from "@/types/dto/room.dto";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useUserSearch } from "@/hooks/queries/use-user-search";
@@ -67,6 +67,12 @@ export default function RoomMembersModal({
     [allSearchResults, memberUserIds]
   );
 
+  const trimmedSearch = search.trim();
+  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedSearch);
+  const hasExactEmailResult = results.some(
+    (user) => user.email?.toLowerCase() === trimmedSearch.toLowerCase()
+  );
+
   useEffect(() => {
     if (!open) return;
 
@@ -82,6 +88,18 @@ export default function RoomMembersModal({
     setWorkingId(user.id);
     sendInvite(
       { chatId: room.id, invitedUserId: user.id },
+      {
+        onSettled: () => setWorkingId(null),
+        onSuccess: () => setSearch(""),
+      }
+    );
+  };
+
+  const handleInviteByEmail = () => {
+    if (!isEmail) return;
+    setWorkingId(`email:${trimmedSearch}`);
+    sendInvite(
+      { chatId: room.id, email: trimmedSearch },
       {
         onSettled: () => setWorkingId(null),
         onSuccess: () => setSearch(""),
@@ -207,13 +225,13 @@ export default function RoomMembersModal({
         <div className="p-4 space-y-4">
           <Command shouldFilter={false} className="rounded-lg border border-border overflow-hidden bg-surface-soft">
             <CommandInput
-              placeholder="Invite member by email..."
+              placeholder="Invite by name or email..."
               value={search}
               onValueChange={setSearch}
               className="px-4 py-3 text-foreground bg-transparent outline-none border-b border-border"
             />
             <CommandList className="max-h-44 overflow-y-auto">
-              {results.length === 0 && search && (
+              {results.length === 0 && search && !isEmail && (
                 <CommandEmpty className="p-4 text-muted text-sm">
                   No new user found
                 </CommandEmpty>
@@ -240,6 +258,29 @@ export default function RoomMembersModal({
                   <UserPlus className="w-4 h-4 text-muted" />
                 </CommandItem>
               ))}
+
+              {isEmail && !hasExactEmailResult && (
+                <CommandItem
+                  value={`email:${trimmedSearch}`}
+                  onSelect={handleInviteByEmail}
+                  className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-surface-soft transition"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
+                    <Mail className="h-4 w-4" />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-foreground text-sm font-medium truncate">
+                      Invite {trimmedSearch}
+                    </p>
+                    <p className="text-muted text-xs truncate">
+                      {isInviting && workingId === `email:${trimmedSearch}`
+                        ? "Sending email..."
+                        : "They will get an email with a join link"}
+                    </p>
+                  </div>
+                  <UserPlus className="w-4 h-4 text-muted" />
+                </CommandItem>
+              )}
             </CommandList>
           </Command>
 

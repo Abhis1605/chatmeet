@@ -117,11 +117,32 @@ body {
   overflow-x: hidden;
 }
 
-button,
 input,
 textarea,
 select {
   min-height: 2.75rem;
+}
+
+/* Switches and Sonner's action/cancel/close buttons define their own
+   compact sizes. */
+button[role="switch"],
+[data-sonner-toast] button {
+  min-height: 0;
+}
+
+/* Toast action/cancel pills: rounded, comfortable tap targets that still
+   fit inside the toast on small screens. */
+[data-sonner-toast][data-styled="true"] button[data-button] {
+  height: 1.75rem;
+  padding-inline: 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+[data-sonner-toast][data-styled="true"] button[data-button]:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 50%, transparent);
 }
 
 @supports (padding: env(safe-area-inset-bottom)) {
@@ -145,49 +166,55 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-mono);
 }
 
-.btn-primary {
-  background-color: var(--primary);
-  color: var(--on-primary);
-  font-weight: 500;
-  border-radius: var(--radius-lg);
-  padding: 0.625rem 1.25rem;
-  transition: background-color 0.15s ease;
-  cursor: pointer;
-}
+/* Component classes live in @layer components so Tailwind utilities
+   (px-8, py-4, rounded-full, ...) can still override them at the call
+   site. Unlayered rules beat all layered utilities and behave
+   differently between dev and production CSS bundles. */
+@layer components {
+  .btn-primary {
+    background-color: var(--primary);
+    color: var(--on-primary);
+    font-weight: 500;
+    border-radius: var(--radius-lg);
+    padding: 0.625rem 1.25rem;
+    transition: background-color 0.15s ease;
+    cursor: pointer;
+  }
 
-.btn-primary:hover:not(:disabled) {
-  background-color: var(--primary-hover);
-}
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--primary-hover);
+  }
 
-.btn-primary:disabled {
-  cursor: not-allowed;
-}
+  .btn-primary:disabled {
+    cursor: not-allowed;
+  }
 
-.btn-secondary {
-  background-color: var(--surface);
-  color: var(--foreground);
-  font-weight: 500;
-  border-radius: var(--radius-lg);
-  padding: 0.625rem 1.25rem;
-  border: 1px solid var(--border);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
-  transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
-  cursor: pointer;
-}
+  .btn-secondary {
+    background-color: var(--surface);
+    color: var(--foreground);
+    font-weight: 500;
+    border-radius: var(--radius-lg);
+    padding: 0.625rem 1.25rem;
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+    transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+  }
 
-.btn-secondary:hover:not(:disabled) {
-  background-color: var(--primary-soft);
-  color: var(--primary);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.08);
-}
+  .btn-secondary:hover:not(:disabled) {
+    background-color: var(--primary-soft);
+    color: var(--primary);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.08);
+  }
 
-.btn-secondary:active:not(:disabled) {
-  transform: translateY(0);
-}
+  .btn-secondary:active:not(:disabled) {
+    transform: translateY(0);
+  }
 
-.btn-secondary:disabled {
-  cursor: not-allowed;
+  .btn-secondary:disabled {
+    cursor: not-allowed;
+  }
 }
 
 /* ── Hero spotlight background (NestJS-style glow) ───────────────────── */

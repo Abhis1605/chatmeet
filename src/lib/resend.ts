@@ -2,6 +2,14 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+const escapeHtml = (value: string) =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+
 export const sendOTPEmail = async (to: string, otp: string) => {
   const { error } = await resend.emails.send({
     from: process.env.EMAIL_FROM!,
@@ -40,6 +48,46 @@ export const sendPasswordResetEmail = async (to: string, otp: string) => {
 
   if (error) {
     throw new Error(`Failed to send password reset email: ${error.message}`);
+  }
+};
+
+export const sendRoomInviteEmail = async ({
+  to,
+  inviterName,
+  roomName,
+  inviteUrl,
+}: {
+  to: string;
+  inviterName: string;
+  roomName: string;
+  inviteUrl: string;
+}) => {
+  const safeInviter = escapeHtml(inviterName);
+  const safeRoom = escapeHtml(roomName);
+
+  const { error } = await resend.emails.send({
+    from: process.env.EMAIL_FROM!,
+    to,
+    subject: `${inviterName} invited you to ${roomName} on ChatMeet`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+        <h2 style="margin: 0 0 12px;">ChatMeet</h2>
+        <p><strong>${safeInviter}</strong> invited you to join the room <strong>${safeRoom}</strong>.</p>
+        <p style="margin: 24px 0;">
+          <a href="${inviteUrl}" style="display: inline-block; background: #2563eb; color: #ffffff; text-decoration: none; padding: 12px 20px; border-radius: 9999px; font-weight: 600;">
+            Join the room
+          </a>
+        </p>
+        <p style="color: #6c706a; font-size: 13px;">
+          This invite expires in 7 days. If you were not expecting it, you can ignore this email.
+        </p>
+        <p style="color: #6c706a; font-size: 12px; word-break: break-all;">${inviteUrl}</p>
+      </div>
+    `,
+  });
+
+  if (error) {
+    throw new Error(`Failed to send room invite email: ${error.message}`);
   }
 };
 

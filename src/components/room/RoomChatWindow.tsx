@@ -13,8 +13,10 @@ import { useUploadThing } from "@/lib/uploadthing";
 import { showError } from "@/lib/toast";
 import MessageList from "@/components/chat/MessageList";
 import ChatInput from "@/components/chat/ChatInput";
+import ThreadPanel from "@/components/chat/ThreadPanel";
 import RoomMembersModal from "./RoomMembersModal";
 import RoomCodeShareSheet from "./RoomCodeShareSheet";
+import CallLauncher from "@/components/call/CallLauncher";
 import type { RoomDto } from "@/types/dto/room.dto";
 import { useSettings } from "@/hooks/queries/use-settings";
 
@@ -51,6 +53,8 @@ export default function RoomChatWindow({ onBack }: { onBack?: () => void }) {
   const [uploading, setUploading] = useState(false);
   const [openMembers, setOpenMembers] = useState(false);
   const [openShareCode, setOpenShareCode] = useState(false);
+  const [replyTo, setReplyTo] = useState<any>(null);
+  const [threadMessage, setThreadMessage] = useState<any>(null);
 
   const { startUpload } = useUploadThing("messageUploader");
 
@@ -66,6 +70,11 @@ export default function RoomChatWindow({ onBack }: { onBack?: () => void }) {
   useEffect(() => {
     selectedRoomRef.current = selectedRoom;
   }, [selectedRoom]);
+
+  useEffect(() => {
+    setReplyTo(null);
+    setThreadMessage(null);
+  }, [activeRoomChatId]);
 
   useEffect(() => {
     if (activeRoomChatId) {
@@ -131,14 +140,22 @@ export default function RoomChatWindow({ onBack }: { onBack?: () => void }) {
       chatId: selectedRoom.id,
       type: "TEXT",
       content: input,
+      parentId: replyTo?.id,
     });
 
     setInput("");
+    setReplyTo(null);
     socket.emit("stop-typing", selectedRoom.id);
 
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
+  };
+
+  const openThread = (message: any) => {
+    // Replies always point at their thread root; opening from a reply should
+    // still show the whole conversation, not an empty child thread.
+    setThreadMessage({ id: message.parentId ?? message.id });
   };
 
   const handleTyping = (value: string) => {
@@ -200,6 +217,8 @@ export default function RoomChatWindow({ onBack }: { onBack?: () => void }) {
           </span>
         </div>
 
+        <CallLauncher chatId={selectedRoom.id} callType="GROUP" />
+
         <button
           type="button"
           title="Share room code"
@@ -228,9 +247,36 @@ export default function RoomChatWindow({ onBack }: { onBack?: () => void }) {
         onLoadMore={fetchNextPage}
         hasMore={Boolean(hasNextPage)}
         isLoadingMore={isFetchingNextPage}
+        onReplyMessage={setReplyTo}
+        onOpenThread={openThread}
       />
 
       <div className="p-4 gap-2 border-t border-border">
+        {replyTo && (
+          <div className="mb-3 flex items-start justify-between gap-3 rounded-lg border border-primary/30 bg-surface-soft px-3 py-2">
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-primary">
+                Replying to {replyTo.sender?.name || replyTo.sender?.email}
+              </p>
+              <p className="truncate text-xs text-muted">
+                {replyTo.type === "TEXT"
+                  ? replyTo.content
+                  : replyTo.type === "IMAGE"
+                    ? "Photo"
+                    : replyTo.type === "VIDEO"
+                      ? "Video"
+                      : replyTo.fileName || "File"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setReplyTo(null)}
+              className="shrink-0 text-xs text-muted hover:text-foreground"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
         <ChatInput
           input={input}
           onChange={handleTyping}
@@ -254,7 +300,9 @@ export default function RoomChatWindow({ onBack }: { onBack?: () => void }) {
                 fileName: result.name,
                 fileType: result.type,
                 fileSize: result.size,
+                parentId: replyTo?.id,
               });
+              setReplyTo(null);
             } finally {
               setUploading(false);
             }
@@ -275,6 +323,16 @@ export default function RoomChatWindow({ onBack }: { onBack?: () => void }) {
         room={selectedRoom}
         isCreator={Boolean(isCreator)}
       />
+
+      {threadMessage && (
+        <ThreadPanel
+          chatId={selectedRoom.id}
+          messageId={threadMessage.id}
+          session={session}
+          isGroup
+          onClose={() => setThreadMessage(null)}
+        />
+      )}
     </div>
   );
 }

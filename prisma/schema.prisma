@@ -149,10 +149,18 @@ model Message {
   senderId String
   chatId   String
 
+  // Threaded replies: every reply points at a top-level message so threads
+  // stay two levels deep (slack-style) instead of nesting indefinitely.
+  parentId String?
+  parent   Message?  @relation("MessageThread", fields: [parentId], references: [id], onDelete: SetNull)
+  replies  Message[] @relation("MessageThread")
+
   sender User @relation(fields: [senderId], references: [id])
   chat   Chat @relation(fields: [chatId], references: [id])
 
   createdAt DateTime @default(now())
+
+  @@index([parentId])
 }
 
 // ── Video Call (additive) ─────────────────────────────────────────
@@ -169,6 +177,7 @@ model CallSession {
 
   // ── Call history / participants (additive) ───────────────────────
   type         String            @default("ONE_TO_ONE")
+  mediaType    String            @default("VIDEO")
   participants CallParticipant[]
 
   @@index([chatId, status])
@@ -193,17 +202,24 @@ model CallParticipant {
 // ── Room Invite ────────────────────────────────────────────────────
 model RoomInvite {
   id            String       @id @default(cuid())
+  // Unguessable token used by the emailed invite link.
+  token         String       @unique @default(cuid())
   chatId        String
   chat          Chat         @relation(fields: [chatId], references: [id], onDelete: Cascade)
   invitedById   String
   invitedBy     User         @relation("SentInvites", fields: [invitedById], references: [id])
-  invitedUserId String
-  invitedUser   User         @relation("ReceivedInvites", fields: [invitedUserId], references: [id])
+  // Either an existing user, an email address, or both (email that belongs
+  // to a registered user gets both so it also appears in their in-app list).
+  invitedUserId String?
+  invitedUser   User?        @relation("ReceivedInvites", fields: [invitedUserId], references: [id])
+  invitedEmail  String?
   status        InviteStatus @default(PENDING)
   createdAt     DateTime     @default(now())
+  expiresAt     DateTime?
   respondedAt   DateTime?
 
   @@unique([chatId, invitedUserId, status])
+  @@index([invitedEmail])
 }
 
 enum InviteStatus {

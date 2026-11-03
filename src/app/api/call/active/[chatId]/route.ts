@@ -37,6 +37,8 @@ export async function GET(
                 id: callSession.id,
                 chatId: callSession.chatId,
                 hmsRoomId: callSession.hmsRoomId,
+                type: callSession.type,
+                mediaType: callSession.mediaType,
                 status: callSession.status,
                 startedById: callSession.startedById,
                 startedAt: callSession.startedAt.toISOString(),

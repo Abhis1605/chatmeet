@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import ChatHeader from "./chat/ChatHeader";
 import MessageList from "./chat/MessageList";
 import ChatInput from "./chat/ChatInput";
+import ThreadPanel from "./chat/ThreadPanel";
 import { useUploadThing } from "@/lib/uploadthing";
 import GroupMembersModal from "./group/GroupMembersModal";
 import { canSendGroupMessage } from "@/lib/groupPermissions";
@@ -55,8 +56,16 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
   const [editingMessage, setEditingMessage] = useState<any>(null);
   const [editText, setEditText] = useState("");
   const [messageActionError, setMessageActionError] = useState<string | null>(null);
+  const [replyTo, setReplyTo] = useState<any>(null);
+  const [threadMessage, setThreadMessage] = useState<any>(null);
 
   const { startUpload } = useUploadThing("messageUploader");
+
+  useEffect(() => {
+    setReplyTo(null);
+    setThreadMessage(null);
+    setEditingMessage(null);
+  }, [activeChatId]);
 
   const selectedChatRef = useRef<any>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -173,9 +182,11 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
       chatId: selectedChat.id,
       type: "TEXT",
       content: input,
+      parentId: replyTo?.id,
     });
 
     setInput("");
+    setReplyTo(null);
     socket.emit("stop-typing", selectedChat.id);
 
     if (typingTimeoutRef.current) {
@@ -225,6 +236,12 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
         onClick: () => undefined,
       },
     });
+  };
+
+  const openThread = (message: any) => {
+    // Replies always point at their thread root; opening from a reply should
+    // still show the whole conversation, not an empty child thread.
+    setThreadMessage({ id: message.parentId ?? message.id });
   };
 
   const handleTyping = (value: string) => {
@@ -293,6 +310,8 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
         isLoadingMore={isFetchingNextPage}
         onEditMessage={beginEditMessage}
         onDeleteMessage={removeMessage}
+        onReplyMessage={setReplyTo}
+        onOpenThread={openThread}
       />
 
       {messageActionError && (
@@ -302,6 +321,31 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
       )}
 
       <div className="p-4 gap-2 border-t border-border">
+        {replyTo && (
+          <div className="mb-3 flex items-start justify-between gap-3 rounded-lg border border-primary/30 bg-surface-soft px-3 py-2">
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-primary">
+                Replying to {replyTo.sender?.name || replyTo.sender?.email}
+              </p>
+              <p className="truncate text-xs text-muted">
+                {replyTo.type === "TEXT"
+                  ? replyTo.content
+                  : replyTo.type === "IMAGE"
+                    ? "Photo"
+                    : replyTo.type === "VIDEO"
+                      ? "Video"
+                      : replyTo.fileName || "File"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setReplyTo(null)}
+              className="shrink-0 text-xs text-muted hover:text-foreground"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
         {editingMessage && (
           <div className="mb-3 rounded-lg border border-primary/30 bg-surface-soft p-3">
             <div className="mb-2 flex items-center justify-between gap-3">
@@ -357,7 +401,9 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
                 fileName: result.name,
                 fileType: result.type,
                 fileSize: result.size,
+                parentId: replyTo?.id,
               });
+              setReplyTo(null);
             } finally {
               setUploading(false);
             }
@@ -371,6 +417,17 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
         chat={selectedChat}
         currentUserId={session?.user?.id}
       />
+
+      {threadMessage && selectedChat?.id && (
+        <ThreadPanel
+          chatId={selectedChat.id}
+          messageId={threadMessage.id}
+          session={session}
+          isGroup={Boolean(selectedChat.isGroup)}
+          disabled={!canSendMessage}
+          onClose={() => setThreadMessage(null)}
+        />
+      )}
     </div>
   );
 }

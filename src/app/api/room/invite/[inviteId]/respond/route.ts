@@ -39,6 +39,10 @@ export async function POST(
       return NextResponse.json({ error: "Invite already responded to" }, { status: 409 });
     }
 
+    if (invite.expiresAt && invite.expiresAt.getTime() < Date.now()) {
+      return NextResponse.json({ error: "This invite has expired" }, { status: 410 });
+    }
+
     if (action === "reject") {
       await prisma.roomInvite.update({
         where: { id: inviteId },

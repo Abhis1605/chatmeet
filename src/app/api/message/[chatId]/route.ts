@@ -29,7 +29,21 @@ export async function GET(
       orderBy: { createdAt: "desc" },
       take: 50,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      include: { sender: { select: publicUserSelect } },
+      include: {
+        sender: { select: publicUserSelect },
+        parent: {
+          select: {
+            id: true,
+            content: true,
+            type: true,
+            fileName: true,
+            senderId: true,
+            createdAt: true,
+            sender: { select: publicUserSelect },
+          },
+        },
+        _count: { select: { replies: true } },
+      },
     });
 
     const nextCursor = messages.length === 50 ? messages[messages.length - 1].id : null;
@@ -72,7 +86,20 @@ export async function PATCH(
     const message = await prisma.message.update({
       where: { id: messageId },
       data: { content },
-      include: { sender: { select: publicUserSelect } },
+      include: {
+        sender: { select: publicUserSelect },
+        parent: {
+          select: {
+            id: true,
+            content: true,
+            type: true,
+            fileName: true,
+            senderId: true,
+            createdAt: true,
+            sender: { select: publicUserSelect },
+          },
+        },
+      },
     });
     await notifySocket("message-updated", message, { chatId });
     return Response.json({ message });
