@@ -19,6 +19,7 @@ interface Props {
   message: any;
   isMe: boolean;
   showSender?: boolean;
+  hideParent?: boolean;
   currentUserId?: string;
   onReply?: (message: any) => void;
   onEdit?: (message: any) => void;
@@ -75,6 +76,7 @@ export default function MessageBubble({
   message,
   isMe,
   showSender = false,
+  hideParent = false,
   currentUserId,
   onReply,
   onEdit,
@@ -233,7 +235,7 @@ export default function MessageBubble({
             </p>
           )}
 
-          {message.parent && (
+          {message.parent && !hideParent && (
             <div className="mb-2 rounded-md border-l-2 border-primary/60 bg-surface-soft/70 px-2 py-1">
               <p className="text-[10px] font-medium text-primary">
                 {message.parent.sender?.name || message.parent.sender?.email}
