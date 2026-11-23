@@ -17,7 +17,7 @@ const NOTIFY_SECRET = process.env.SOCKET_NOTIFY_SECRET
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN
 const PORT = Number(process.env.SOCKET_PORT || process.env.PORT || 5000)
 
-if (!JWT_SECRET || !NOTIFY_SECRET || !CLIENT_ORIGIN) {
+if (!process.env.VERCEL && (!JWT_SECRET || !NOTIFY_SECRET || !CLIENT_ORIGIN)) {
     throw new Error('NEXTAUTH_SECRET, SOCKET_NOTIFY_SECRET, and CLIENT_ORIGIN must be set for the socket server')
 }
 
@@ -234,7 +234,7 @@ const endCallsForDisconnectedUser = async (userId: string) => {
 }
 
 app.post('/notify', (req, res) => {
-    if (req.get('x-notify-secret') !== NOTIFY_SECRET) {
+    if (!NOTIFY_SECRET || req.get('x-notify-secret') !== NOTIFY_SECRET) {
         return res.status(401).json({ error: 'Unauthorized' })
     }
 
@@ -289,7 +289,7 @@ const io = new Server(server, {
     pingInterval: 10000,
     pingTimeout: 5000,
     cors: {
-        origin: CLIENT_ORIGIN,
+        origin: CLIENT_ORIGIN || true,
         methods: ['GET', 'POST'],
         credentials: true
     }
@@ -298,8 +298,7 @@ const io = new Server(server, {
 io.use(async (socket: CustomSocket, next) => {
     try {
         const token = socket.handshake.auth.token
-
-        if (typeof token !== 'string') {
+        if (typeof token !== 'string' || !JWT_SECRET) {
             return next(new Error('Unauthorized'))
         }
 

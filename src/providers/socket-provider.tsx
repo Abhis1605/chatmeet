@@ -56,6 +56,15 @@ export default function SocketProvider({
     socket.on("connect", () => setConnected(true));
     socket.on("disconnect", () => setConnected(false));
 
+    // Vercel deployments and temporary network interruptions may disconnect
+    // the realtime transport. Poll the server while unavailable so messages,
+    // calls, rooms, presence-dependent lists, and chat updates stay current.
+    const disconnectedPoll = window.setInterval(() => {
+      if (!socket.connected) {
+        void queryClient.invalidateQueries();
+      }
+    }, 5000);
+
     // Browsers only allow audio to start from a user gesture. Prime the
     // AudioContext on the first interaction so later message sounds play.
     window.addEventListener("pointerdown", primeNotificationSound, { once: true });
@@ -763,6 +772,7 @@ export default function SocketProvider({
       window.removeEventListener("pointerdown", primeNotificationSound);
       window.removeEventListener("pagehide", handleUnload);
       window.removeEventListener("beforeunload", handleUnload);
+      window.clearInterval(disconnectedPoll);
       socket.off("connect");
       socket.off("disconnect");
       socket.off("new-message", handleNewMessage);
