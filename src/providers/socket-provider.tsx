@@ -49,14 +49,35 @@ export default function SocketProvider({
   useEffect(() => {
     if (status !== "authenticated" || !accessToken) return;
 
+    void fetch("/api/presence/heartbeat", {
+      method: "POST",
+      credentials: "include",
+    });
+    const presenceHeartbeat = window.setInterval(() => {
+      void fetch("/api/presence/heartbeat", {
+        method: "POST",
+        credentials: "include",
+      });
+    }, 30000);
+
     const socket = connectSocket(accessToken);
     if (!socket) {
       setSocket(null);
       setConnected(false);
+      const markOffline = () => {
+        navigator.sendBeacon("/api/presence/offline");
+      };
+      window.addEventListener("pagehide", markOffline);
+      window.addEventListener("beforeunload", markOffline);
       const disconnectedPoll = window.setInterval(() => {
         void queryClient.invalidateQueries();
       }, 5000);
-      return () => window.clearInterval(disconnectedPoll);
+      return () => {
+        window.clearInterval(disconnectedPoll);
+        window.clearInterval(presenceHeartbeat);
+        window.removeEventListener("pagehide", markOffline);
+        window.removeEventListener("beforeunload", markOffline);
+      };
     }
     setSocket(socket);
 
@@ -771,6 +792,7 @@ export default function SocketProvider({
     // reliable (especially in incognito windows, which tear the network
     // stack down abruptly), so proactively disconnect on unload as well.
     const handleUnload = () => {
+      navigator.sendBeacon("/api/presence/offline");
       socket.disconnect();
     };
     window.addEventListener("pagehide", handleUnload);
@@ -781,6 +803,7 @@ export default function SocketProvider({
       window.removeEventListener("pagehide", handleUnload);
       window.removeEventListener("beforeunload", handleUnload);
       window.clearInterval(disconnectedPoll);
+      window.clearInterval(presenceHeartbeat);
       socket.off("connect");
       socket.off("disconnect");
       socket.off("new-message", handleNewMessage);

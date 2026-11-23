@@ -6,6 +6,12 @@ import { notifySocket } from "@/lib/socket-notify";
 
 export async function POST(req: Request) {
     try {
+        if (!process.env.HMS_ACCESS_KEY || !process.env.HMS_SECRET || !process.env.HMS_TEMPLATE_ID) {
+            return Response.json({
+                error: "Calling is not configured. Add HMS_ACCESS_KEY, HMS_SECRET, and HMS_TEMPLATE_ID.",
+            }, { status: 503 });
+        }
+
         const session = await getServerSession(authOptions)
 
         if (!session?.user?.id) {
