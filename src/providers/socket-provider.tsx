@@ -50,6 +50,14 @@ export default function SocketProvider({
     if (status !== "authenticated" || !accessToken) return;
 
     const socket = connectSocket(accessToken);
+    if (!socket) {
+      setSocket(null);
+      setConnected(false);
+      const disconnectedPoll = window.setInterval(() => {
+        void queryClient.invalidateQueries();
+      }, 5000);
+      return () => window.clearInterval(disconnectedPoll);
+    }
     setSocket(socket);
 
     // ── Connection status ────────────────────────────────────────────────

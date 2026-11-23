@@ -2,12 +2,18 @@ import { io, Socket } from "socket.io-client";
 
 let socket: Socket | null = null;
 
-export const connectSocket = (token: string) => {
+export const connectSocket = (token: string): Socket | null => {
   const socketUrl =
     process.env.NEXT_PUBLIC_SOCKET_URL ||
     (typeof window !== "undefined" ? window.location.origin : "");
   const isSameOriginSocket =
     typeof window !== "undefined" && socketUrl === window.location.origin;
+
+  // Vercel does not need an in-process Socket.IO dependency for data writes.
+  // A same-origin WebSocket URL must not generate repeated 500/404 connection
+  // attempts. REST APIs and polling remain the reliable fallback.
+  if (isSameOriginSocket) return null;
+
   const socketPath =
     process.env.NEXT_PUBLIC_SOCKET_PATH ||
     (isSameOriginSocket ? "/api/socket-io/socket.io" : "/socket.io");
