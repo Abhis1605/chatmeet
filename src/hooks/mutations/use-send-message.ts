@@ -2,7 +2,6 @@
 
 import { useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import { useSocketContext } from "@/providers/socket-provider";
 import type {
   SendMessagePayload,
   OptimisticMessage,
@@ -13,60 +12,61 @@ import { useSession } from "next-auth/react";
 import { showError } from "@/lib/toast";
 
 /**
- * useSendMessage — wraps socket emit, NOT an axios call.
+ * useSendMessage — saves messages through the authenticated API.
  * Optimistically appends a temp message to the cache so UI feels instant.
  */
 export function useSendMessage() {
   const queryClient = useQueryClient();
-  const { socket } = useSocketContext();
   const { data: session } = useSession();
 
   return useMutation({
     mutationFn: async (payload: SendMessagePayload) => {
-      if (!socket || !socket.connected) {
-        throw new Error("Chat server disconnected.");
-      }
       const clientMessageId = crypto.randomUUID();
       const messagePayload = { ...payload, clientMessageId };
-
-      // The live message event also proves the database write succeeded. This
-      // covers a lost ack or a socket process that hasn't restarted to load the
-      // ack handler yet, preventing a false failure after delivery.
-      let resolveFromEvent: (() => void) | undefined;
-      const deliveredEvent = new Promise<void>((resolve) => {
-        resolveFromEvent = resolve;
+      const response = await fetch(`/api/message/${payload.chatId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(messagePayload),
       });
-      const matchesSentMessage = (message: any) =>
-        message?.chatId === payload.chatId &&
-        message?.senderId === session?.user?.id &&
-        (message.clientMessageId === clientMessageId ||
-          (message.content === (payload.content || null) &&
-            message.type === payload.type &&
-            message.fileUrl === (payload.fileUrl || null)));
-      const handleNewMessage = (message: any) => {
-        if (matchesSentMessage(message)) resolveFromEvent?.();
-      };
-
-      socket.on("new-message", handleNewMessage);
-      try {
-        const acknowledgement = socket
-          .timeout(10_000)
-          .emitWithAck("send-message", messagePayload)
-          .then((result) => {
-            if (!result?.ok) {
-              throw new Error(result?.error || "The server could not save your message.");
-            }
-          });
-        await Promise.race([acknowledgement, deliveredEvent]);
-        return payload;
-      } catch (error) {
-        if (error instanceof Error && error.message !== "operation has timed out") {
-          throw error;
-        }
-        throw new Error("No confirmation received. Check your connection and retry.");
-      } finally {
-        socket.off("new-message", handleNewMessage);
+      const result = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(result?.error || "Could not save your message.");
       }
+      if (!result?.message) {
+        throw new Error("The server did not confirm your message.");
+      }
+      queryClient.setQueryData<InfiniteData<MessagesPage>>(
+        queryKeys.messages.byChat(payload.chatId),
+        (previous) => {
+          if (!previous) return previous;
+          const [firstPage, ...restPages] = previous.pages;
+          const withoutTemp = firstPage.messages.filter(
+            (message) =>
+              !(
+                (message as any)._isOptimistic &&
+                message.content === (payload.content || null) &&
+                message.type === payload.type
+              )
+          );
+          const alreadyExists = withoutTemp.some(
+            (message) => message.id === result.message.id
+          );
+          return {
+            ...previous,
+            pages: [
+              {
+                ...firstPage,
+                messages: alreadyExists
+                  ? withoutTemp
+                  : [...withoutTemp, result.message],
+              },
+              ...restPages,
+            ],
+          };
+        }
+      );
+      return payload;
     },
 
     onMutate: async (payload) => {

@@ -4,6 +4,8 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 import { notifySocket } from "@/lib/socket-notify";
 import { messageInclude } from "@/lib/message-include";
 import { buildLinkPreview, extractFirstUrl } from "@/lib/link-preview";
+import { canSendGroupMessage } from "@/lib/groupPermissions";
+import { EVERYONE_MENTION, extractMentionTokens } from "@/lib/mentions";
 
 async function getMember(chatId: string, userId: string) {
   return prisma.chatMember.findFirst({ where: { chatId, userId } });
@@ -38,6 +40,112 @@ export async function GET(
   } catch (error) {
     console.error(error);
     return Response.json({ error: "Server error" }, { status: 500 });
+  }
+}
+
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ chatId: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { chatId } = await params;
+    const body = await req.json();
+    const type = body.type;
+    const content = typeof body.content === "string" ? body.content : null;
+    const fileUrl = typeof body.fileUrl === "string" ? body.fileUrl : null;
+    const fileName = typeof body.fileName === "string" ? body.fileName : null;
+    const fileType = typeof body.fileType === "string" ? body.fileType : null;
+    const fileSize = typeof body.fileSize === "number" ? body.fileSize : null;
+    const clientMessageId =
+      typeof body.clientMessageId === "string" ? body.clientMessageId : null;
+
+    if (!["TEXT", "IMAGE", "FILE", "VIDEO", "AUDIO"].includes(type)) {
+      return Response.json({ error: "Invalid message type." }, { status: 400 });
+    }
+    if (type === "TEXT" && (!content || !content.trim())) {
+      return Response.json({ error: "Message cannot be empty." }, { status: 400 });
+    }
+
+    const member = await prisma.chatMember.findFirst({
+      where: { chatId, userId: session.user.id },
+      include: { chat: true },
+    });
+    if (!member) {
+      return Response.json({ error: "You no longer have access to this conversation." }, { status: 403 });
+    }
+    if (member.chat.isGroup && !canSendGroupMessage(member)) {
+      return Response.json({ error: "You do not have permission to message in this group." }, { status: 403 });
+    }
+
+    let parentId: string | undefined;
+    if (typeof body.parentId === "string" && body.parentId) {
+      const parent = await prisma.message.findFirst({
+        where: { id: body.parentId, chatId },
+        select: { id: true, parentId: true },
+      });
+      parentId = parent ? (parent.parentId ?? parent.id) : undefined;
+    }
+
+    const mentionTokens = extractMentionTokens(content);
+    let mentionUserIds: string[] = [];
+    if (mentionTokens.length) {
+      const members = await prisma.chatMember.findMany({
+        where: { chatId },
+        select: { userId: true, user: { select: { username: true } } },
+      });
+      const wantsEveryone = mentionTokens.includes(EVERYONE_MENTION);
+      mentionUserIds = members
+        .filter((candidate) =>
+          candidate.userId !== session.user.id &&
+          (wantsEveryone ||
+            (candidate.user.username &&
+              mentionTokens.includes(candidate.user.username.toLowerCase())))
+        )
+        .map((candidate) => candidate.userId);
+    }
+
+    const message = await prisma.message.create({
+      data: {
+        chatId,
+        senderId: session.user.id,
+        type,
+        content,
+        parentId,
+        fileUrl,
+        fileName,
+        fileType,
+        fileSize,
+        ...(mentionUserIds.length
+          ? { mentions: { create: mentionUserIds.map((userId) => ({ userId })) } }
+          : {}),
+      },
+      include: messageInclude,
+    });
+
+    const deliveredMessage = { ...message, clientMessageId };
+    await notifySocket("new-message", deliveredMessage, { chatId });
+
+    if (type === "TEXT" && extractFirstUrl(content)) {
+      void buildLinkPreview(content).then(async (linkPreview) => {
+        if (!linkPreview) return;
+        const updated = await prisma.message.update({
+          where: { id: message.id },
+          data: { linkPreview: linkPreview as any },
+          include: messageInclude,
+        });
+        await notifySocket("message-updated", updated, { chatId });
+      });
+    }
+
+    return Response.json({ message: deliveredMessage });
+  } catch (error) {
+    console.error(error);
+    return Response.json({ error: "Could not save your message." }, { status: 500 });
   }
 }
 
