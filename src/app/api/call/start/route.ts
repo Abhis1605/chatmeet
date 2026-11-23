@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
-import { createHmsRoom } from "@/lib/hms";
+import { createHmsRoom, discardHmsRoom } from "@/lib/hms";
 import { notifySocket } from "@/lib/socket-notify";
 
 export async function POST(req: Request) {
@@ -30,37 +30,26 @@ export async function POST(req: Request) {
             return Response.json({ error: 'Forbidden' }, { status: 403 })
         }
 
-        // Check-then-create inside a transaction to narrow (not eliminate) the
-        // race window for concurrent start requests on the same chat.
-        const existing = await prisma.callSession.findFirst({
-            where: { chatId, status: 'ACTIVE' },
-        })
+        let createdHmsRoomId: string | null = null;
+        const createOrGetCallSession = () => prisma.$transaction(async (tx) => {
+            // Serialize starts for this chat across all app instances. The
+            // lock is held until the session and participants are committed.
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(0, hashtext(${chatId}))`;
 
-        if (existing) {
-            return Response.json({
-                callSessionId: existing.id,
-                hmsRoomId: existing.hmsRoomId,
-                status: existing.status,
-                type: existing.type,
-                mediaType: existing.mediaType,
-            })
-        }
-
-        const hmsRoomId = await createHmsRoom(`chat-${chatId}-${Date.now()}`)
-
-        // Fetch all chat members so we can create CallParticipant rows
-        const allMembers = await prisma.chatMember.findMany({
-            where: { chatId },
-            select: { userId: true },
-        })
-
-        const callSession = await prisma.$transaction(async (tx) => {
-            const stillActive = await tx.callSession.findFirst({
+            const existing = await tx.callSession.findFirst({
                 where: { chatId, status: 'ACTIVE' },
-            })
-            if (stillActive) return stillActive
+            });
+            if (existing) return { callSession: existing, otherUserIds: [], created: false };
 
-            const created = await tx.callSession.create({
+            const allMembers = await tx.chatMember.findMany({
+                where: { chatId },
+                select: { userId: true },
+            });
+
+            const hmsRoomId = await createHmsRoom(`chat-${chatId}-${Date.now()}`);
+            createdHmsRoomId = hmsRoomId;
+
+            const callSession = await tx.callSession.create({
                 data: {
                     chatId,
                     hmsRoomId,
@@ -71,33 +60,50 @@ export async function POST(req: Request) {
                     participants: {
                         create: allMembers.map((m) => ({
                             userId: m.userId,
-                            // Starter is immediately JOINED; others are INVITED
                             status: m.userId === session.user.id ? 'JOINED' : 'INVITED',
                             joinedAt: m.userId === session.user.id ? new Date() : null,
                         })),
                     },
                 },
-            })
-            return created
-        })
+            });
 
-        const otherUserIds = allMembers
-            .map((m) => m.userId)
-            .filter((uid) => uid !== session.user.id)
+            return {
+                callSession,
+                otherUserIds: allMembers.map((m) => m.userId).filter((uid) => uid !== session.user.id),
+                created: true,
+            };
+        }, { timeout: 30_000 });
 
-        await notifySocket(
-            'call-incoming',
-            {
-                sessionId: callSession.id,
-                chatId,
-                hmsRoomId: callSession.hmsRoomId,
-                type: callType,
-                mediaType: callSession.mediaType,
-                startedById: session.user.id,
-                startedByName: session.user.name || session.user.email,
-            },
-            { userIds: otherUserIds }
-        )
+        let result: Awaited<ReturnType<typeof createOrGetCallSession>>;
+        try {
+            result = await createOrGetCallSession();
+        } catch (error) {
+            if (createdHmsRoomId) {
+                try {
+                    await discardHmsRoom(createdHmsRoomId);
+                } catch (cleanupError) {
+                    console.error('Failed to disable unused 100ms room:', cleanupError);
+                }
+            }
+            throw error;
+        }
+
+        const { callSession } = result;
+        if (result.created) {
+            await notifySocket(
+                'call-incoming',
+                {
+                    sessionId: callSession.id,
+                    chatId,
+                    hmsRoomId: callSession.hmsRoomId,
+                    type: callType,
+                    mediaType: callSession.mediaType,
+                    startedById: session.user.id,
+                    startedByName: session.user.name || session.user.email,
+                },
+                { userIds: result.otherUserIds }
+            );
+        }
 
         return Response.json({
             callSessionId: callSession.id,

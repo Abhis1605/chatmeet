@@ -24,14 +24,49 @@ export function useSendMessage() {
   return useMutation({
     mutationFn: async (payload: SendMessagePayload) => {
       if (!socket || !socket.connected) {
-        throw new Error("Socket disconnected");
+        throw new Error("Chat server disconnected.");
       }
-      // Emit via socket (no HTTP response to wait for)
-      socket.emit("send-message", payload);
-      
-      // We resolve immediately because the actual server confirmation comes back 
-      // via the 'new-message' event in SocketProvider.
-      return Promise.resolve(payload);
+      const clientMessageId = crypto.randomUUID();
+      const messagePayload = { ...payload, clientMessageId };
+
+      // The live message event also proves the database write succeeded. This
+      // covers a lost ack or a socket process that hasn't restarted to load the
+      // ack handler yet, preventing a false failure after delivery.
+      let resolveFromEvent: (() => void) | undefined;
+      const deliveredEvent = new Promise<void>((resolve) => {
+        resolveFromEvent = resolve;
+      });
+      const matchesSentMessage = (message: any) =>
+        message?.chatId === payload.chatId &&
+        message?.senderId === session?.user?.id &&
+        (message.clientMessageId === clientMessageId ||
+          (message.content === (payload.content || null) &&
+            message.type === payload.type &&
+            message.fileUrl === (payload.fileUrl || null)));
+      const handleNewMessage = (message: any) => {
+        if (matchesSentMessage(message)) resolveFromEvent?.();
+      };
+
+      socket.on("new-message", handleNewMessage);
+      try {
+        const acknowledgement = socket
+          .timeout(10_000)
+          .emitWithAck("send-message", messagePayload)
+          .then((result) => {
+            if (!result?.ok) {
+              throw new Error(result?.error || "The server could not save your message.");
+            }
+          });
+        await Promise.race([acknowledgement, deliveredEvent]);
+        return payload;
+      } catch (error) {
+        if (error instanceof Error && error.message !== "operation has timed out") {
+          throw error;
+        }
+        throw new Error("No confirmation received. Check your connection and retry.");
+      } finally {
+        socket.off("new-message", handleNewMessage);
+      }
     },
 
     onMutate: async (payload) => {
@@ -133,7 +168,10 @@ export function useSendMessage() {
       if (context?.threadKey && context.previousThread) {
         queryClient.setQueryData(context.threadKey, context.previousThread);
       }
-      showError("Failed to send message: " + err.message);
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.messages.byChat(context?.chatId ?? _variables.chatId),
+      });
+      showError(`Message not confirmed. ${err.message} Check the conversation before retrying.`);
     },
     // We don't invalidate onSettled because the server will push the 'new-message' 
     // event which our SocketProvider handles to dedupe and replace the temp one.

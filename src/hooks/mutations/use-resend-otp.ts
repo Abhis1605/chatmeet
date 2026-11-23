@@ -3,6 +3,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { resendOtp } from "@/services/auth.service";
 import { showError, showSuccess } from "@/lib/toast";
+import { isAxiosError } from "axios";
 
 export function useResendOtp() {
   return useMutation({
@@ -16,8 +17,11 @@ export function useResendOtp() {
       showSuccess("New OTP sent to your email.");
     },
 
-    onError: () => {
-      showError("Failed to resend OTP. Please try again.");
+    onError: (error) => {
+      const message = isAxiosError<{ error?: string }>(error)
+        ? error.response?.data?.error
+        : undefined;
+      showError(message || "Could not resend the verification code. Please try again.");
     },
   });
 }

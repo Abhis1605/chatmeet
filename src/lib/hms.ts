@@ -70,3 +70,9 @@ export async function endHmsRoom(hmsRoomId: string): Promise<void> {
   const hms = getHmsClient();
   await hms.activeRooms.end(hmsRoomId, { reason: "Call ended", lock: false });
 }
+
+/** Disable a newly-created room when its call session cannot be persisted. */
+export async function discardHmsRoom(hmsRoomId: string): Promise<void> {
+  const hms = getHmsClient();
+  await hms.rooms.enableOrDisable(hmsRoomId, false);
+}

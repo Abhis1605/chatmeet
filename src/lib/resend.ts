@@ -32,7 +32,7 @@ export const sendOTPEmail = async (to: string, otp: string) => {
         <h2>ChatMeet</h2>
         <p>Your verification code is:</p>
         <h1 style="letter-spacing: 5px;">${otp}</h1>
-        <p>This code will expire in 60 seconds.</p>
+        <p>This code will expire in 10 minutes.</p>
       </div>
     `,
   });

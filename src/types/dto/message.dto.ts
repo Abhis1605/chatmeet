@@ -64,6 +64,7 @@ export interface ThreadPage {
 // Shape emitted by socket 'send-message' event
 export interface SendMessagePayload {
   chatId: string;
+  clientMessageId?: string;
   type: MessageType;
   content?: string;
   fileUrl?: string;

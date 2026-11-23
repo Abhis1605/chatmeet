@@ -7,7 +7,7 @@ ChatMeet is a real-time messaging and video-calling app built with Next.js, Pris
 - Node.js 20 or newer
 - npm
 - PostgreSQL
-- GitHub and Google OAuth application credentials (currently required at startup)
+- Optional GitHub and Google OAuth application credentials
 - A 100ms account for video calls
 - Resend credentials for production email delivery
 
@@ -47,7 +47,7 @@ See [\.env.example](.env.example) for the complete variable list and local defau
 
 - `DATABASE_URL`: PostgreSQL connection string.
 - `NEXTAUTH_SECRET`: secret used to sign sessions and socket tokens.
-- `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`: OAuth credentials; all four are currently required at startup.
+- `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`: optional OAuth credentials; configure each provider's ID and secret together to enable it.
 - `RESEND_API_KEY`, `EMAIL_FROM`: email delivery settings.
 - `HMS_ACCESS_KEY`, `HMS_SECRET`, `HMS_TEMPLATE_ID`: 100ms call settings.
 - `NEXT_PUBLIC_SOCKET_URL`: browser-facing Socket.IO URL.
@@ -56,11 +56,14 @@ See [\.env.example](.env.example) for the complete variable list and local defau
 - `SOCKET_NOTIFY_URL`, `SOCKET_NOTIFY_SECRET`: private app-to-socket notification connection.
 - `SOCKET_PORT`: local socket server port; production platforms may provide `PORT` instead.
 
-For email/password registration and password reset in production, create a Resend API key,
-verify the sending domain in Resend, and set `EMAIL_FROM` to an address on that verified
-domain (for example `ChatMeet <noreply@chatmeet.app>`). An unverified sender or a missing
-API key will prevent OTP delivery. GitHub and Google OAuth variables are optional; omit
-them if you want to use email/password authentication only.
+Email/password registration, password resets, room invites, and contact form delivery use Resend.
+For local development, if email delivery is not configured or fails, OTPs are printed in the
+server console. To deliver email to users in production, create a Resend API key, verify a
+domain you own in Resend, and set `EMAIL_FROM` to an address on that verified domain (for
+example `ChatMeet <noreply@chatmeet.app>`). A free email address such as Gmail cannot be used
+as the sending domain. Resend's unverified test sender is limited to test messages; it is not
+for delivering OTPs to arbitrary users. GitHub and Google OAuth are optional; omit their
+credentials to use email/password authentication only.
 
 ## Useful commands
 

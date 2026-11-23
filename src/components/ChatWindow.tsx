@@ -6,7 +6,6 @@ import { useSession } from "next-auth/react";
 import ChatHeader from "./chat/ChatHeader";
 import MessageList from "./chat/MessageList";
 import ChatInput from "./chat/ChatInput";
-import ThreadPanel from "./chat/ThreadPanel";
 import MessageSearchPanel from "./chat/MessageSearchPanel";
 import PinnedMessagesPanel from "./chat/PinnedMessagesPanel";
 import ForwardModal from "./chat/ForwardModal";
@@ -31,9 +30,13 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
   const { data: session } = useSession();
 
   const { data: chats } = useChats(activeTab);
+  const { data: archivedChats } = useChats(activeTab, true);
   const selectedChat = useMemo(
-    () => chats?.find((c) => c.id === activeChatId),
-    [chats, activeChatId]
+    () =>
+      [...(chats ?? []), ...(archivedChats ?? [])].find(
+        (chat) => chat.id === activeChatId
+      ),
+    [chats, archivedChats, activeChatId]
   );
 
   const { socket } = useSocketContext();
@@ -42,6 +45,7 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
     data: messagesData,
     fetchNextPage,
     hasNextPage,
+    isLoading: isLoadingMessages,
     isFetchingNextPage,
   } = useMessages(activeChatId);
   const messages = useMemo(
@@ -51,7 +55,7 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
         : [],
     [messagesData]
   );
-  const { mutate: sendMessageMutation } = useSendMessage();
+  const { mutateAsync: sendMessageAsync } = useSendMessage();
 
   const { mutate: markAsRead } = useMarkAsRead();
 
@@ -63,7 +67,7 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
   const [editText, setEditText] = useState("");
   const [messageActionError, setMessageActionError] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<any>(null);
-  const [threadMessage, setThreadMessage] = useState<any>(null);
+  const sendingMessageRef = useRef(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [pinnedOpen, setPinnedOpen] = useState(false);
   const [forwardMessage, setForwardMessage] = useState<any>(null);
@@ -76,7 +80,6 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
 
   useEffect(() => {
     setReplyTo(null);
-    setThreadMessage(null);
     setEditingMessage(null);
     setSearchOpen(false);
     setPinnedOpen(false);
@@ -199,20 +202,12 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
 
 
 
-    const handleMessageDenied = (data: any) => {
-      if (data.chatId === selectedChatRef.current?.id) {
-        showError(data.reason || "You do not have permission to message here.");
-      }
-    };
-
     socket.on("user-typing", handleUserTyping);
     socket.on("user-stop-typing", handleUserStopTyping);
-    socket.on("message-denied", handleMessageDenied);
 
     return () => {
       socket.off("user-typing", handleUserTyping);
       socket.off("user-stop-typing", handleUserStopTyping);
-      socket.off("message-denied", handleMessageDenied);
     };
   }, [socket, session, otherUser?.id]);
 
@@ -226,27 +221,36 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
     };
   }, [socket, selectedChat?.id]);
 
-  const sendMessage = () => {
-    if (!input.trim() || !socket || !selectedChat?.id) return;
+  const sendMessage = async () => {
+    if (!input.trim() || !selectedChat?.id) return;
+    if (sendingMessageRef.current) return;
     if (!canSendMessage) {
       showError("Only admins or permitted members can message in this group.");
       return;
     }
 
-    sendMessageMutation({
-      chatId: selectedChat.id,
-      type: "TEXT",
-      content: input,
-      parentId: replyTo?.id,
-    });
-
-    setInput("");
-    persistDraft("");
-    setReplyTo(null);
-    socket.emit("stop-typing", selectedChat.id);
-
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
+    const content = input;
+    const replyTargetId = replyTo?.id;
+    const chatId = selectedChat.id;
+    sendingMessageRef.current = true;
+    try {
+      await sendMessageAsync({
+        chatId,
+        type: "TEXT",
+        content,
+        parentId: replyTargetId,
+      });
+      if (input === content) {
+        setInput("");
+        persistDraft("");
+      }
+      if (replyTo?.id === replyTargetId) setReplyTo(null);
+      if (socket?.connected) socket.emit("stop-typing", chatId);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    } catch {
+      // useSendMessage shows a recoverable error; keep the draft for retry.
+    } finally {
+      sendingMessageRef.current = false;
     }
   };
 
@@ -294,12 +298,6 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
     });
   };
 
-  const openThread = (message: any) => {
-    // Replies always point at their thread root; opening from a reply should
-    // still show the whole conversation, not an empty child thread.
-    setThreadMessage({ id: message.parentId ?? message.id });
-  };
-
   const handleReact = (message: any, emoji: string) => {
     if (!message?.id || message._isOptimistic) return;
     toggleReaction({ messageId: message.id, emoji });
@@ -345,7 +343,7 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
   };
 
   const uploadAndSend = async (file: File) => {
-    if (!socket || !selectedChat?.id) return;
+    if (!selectedChat?.id) return;
     if (!canSendMessage) {
       showError("Only admins or permitted members can upload in this group.");
       return;
@@ -366,16 +364,20 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
             ? "AUDIO"
             : "FILE";
 
-      sendMessageMutation({
-        chatId: selectedChat.id,
-        type,
-        fileUrl: result.serverData.url,
-        fileName: result.name,
-        fileType: result.type,
-        fileSize: result.size,
-        parentId: replyTo?.id,
-      });
-      setReplyTo(null);
+      try {
+        await sendMessageAsync({
+          chatId: selectedChat.id,
+          type,
+          fileUrl: result.serverData.url,
+          fileName: result.name,
+          fileType: result.type,
+          fileSize: result.size,
+          parentId: replyTo?.id,
+        });
+        setReplyTo(null);
+      } catch {
+        // The uploaded file can be selected again; the mutation shows the send error.
+      }
     } catch (error) {
       console.error("Failed to upload file:", error);
       showError("Could not upload that file. Please try again.");
@@ -455,11 +457,11 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
         groupRecipientCount={selectedChat?.isGroup ? Math.max(0, selectedChat.members.length - 1) : undefined}
         onLoadMore={fetchNextPage}
         hasMore={Boolean(hasNextPage)}
+        isLoading={isLoadingMessages}
         isLoadingMore={isFetchingNextPage}
         onEditMessage={beginEditMessage}
         onDeleteMessage={removeMessage}
         onReplyMessage={setReplyTo}
-        onOpenThread={openThread}
         onReact={handleReact}
         onPin={handlePin}
         onForward={setForwardMessage}
@@ -568,18 +570,6 @@ export default function ChatWindow({ onBack }: { onBack?: () => void }) {
         />
       )}
 
-      {threadMessage && selectedChat?.id && (
-        <ThreadPanel
-          chatId={selectedChat.id}
-          messageId={threadMessage.id}
-          session={session}
-          isGroup={Boolean(selectedChat.isGroup)}
-          disabled={!canSendMessage}
-          onClose={() => setThreadMessage(null)}
-          onReact={handleReact}
-          onPin={handlePin}
-        />
-      )}
     </div>
   );
 }

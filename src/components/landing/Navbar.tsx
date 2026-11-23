@@ -12,12 +12,12 @@ import { updateSettings } from "@/services/settings.service";
 import { queryKeys } from "@/lib/query-keys";
 
 const NAV_LINKS = [
-  { label: "Problems", href: "#problems" },
-  {label: "Features", href: "#features"},
-  {label: "Spaces", href: "#rooms-group-section"},
-  { label: "How it works", href: "#how-it-works" },
-  { label: "Success Stories", href: "#success-stories" },
-  { label: "FAQ", href: "#faq" },
+  { label: "Problems", href: "/#problems" },
+  {label: "Features", href: "/#features"},
+  {label: "Spaces", href: "/#rooms-group-section"},
+  { label: "How it works", href: "/#how-it-works" },
+  { label: "Success Stories", href: "/#success-stories" },
+  { label: "FAQ", href: "/#faq" },
 ];
 
 export default function Navbar() {

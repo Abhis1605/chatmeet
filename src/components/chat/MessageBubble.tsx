@@ -5,7 +5,6 @@ import {
   CornerUpLeft,
   File,
   Forward,
-  MessageSquare,
   Pencil,
   Pin,
   PinOff,
@@ -20,11 +19,8 @@ interface Props {
   message: any;
   isMe: boolean;
   showSender?: boolean;
-  replyCount?: number;
-  hideParent?: boolean;
   currentUserId?: string;
   onReply?: (message: any) => void;
-  onOpenThread?: (message: any) => void;
   onEdit?: (message: any) => void;
   onDelete?: (message: any) => void;
   onReact?: (message: any, emoji: string) => void;
@@ -79,11 +75,8 @@ export default function MessageBubble({
   message,
   isMe,
   showSender = false,
-  replyCount = 0,
-  hideParent = false,
   currentUserId,
   onReply,
-  onOpenThread,
   onEdit,
   onDelete,
   onReact,
@@ -126,7 +119,6 @@ export default function MessageBubble({
 
           {!isOptimistic &&
             (onReply ||
-              onOpenThread ||
               canEdit ||
               canDelete ||
               canReact ||
@@ -146,17 +138,6 @@ export default function MessageBubble({
                     className="rounded p-1 text-muted hover:bg-surface-soft hover:text-foreground"
                   >
                     <CornerUpLeft size={13} />
-                  </button>
-                )}
-                {onOpenThread && (
-                  <button
-                    type="button"
-                    onClick={() => onOpenThread(message)}
-                    title="Reply in thread"
-                    aria-label="Reply in thread"
-                    className="rounded p-1 text-muted hover:bg-surface-soft hover:text-foreground"
-                  >
-                    <MessageSquare size={13} />
                   </button>
                 )}
                 {canReact && (
@@ -242,7 +223,7 @@ export default function MessageBubble({
             </p>
           )}
 
-          {message.forwardedFrom && !hideParent && (
+          {message.forwardedFrom && (
             <p className="mb-1 flex items-center gap-1 text-[10px] font-medium text-muted">
               <Forward size={10} />
               Forwarded from{" "}
@@ -252,7 +233,7 @@ export default function MessageBubble({
             </p>
           )}
 
-          {message.parent && !hideParent && (
+          {message.parent && (
             <div className="mb-2 rounded-md border-l-2 border-primary/60 bg-surface-soft/70 px-2 py-1">
               <p className="text-[10px] font-medium text-primary">
                 {message.parent.sender?.name || message.parent.sender?.email}
@@ -388,7 +369,7 @@ export default function MessageBubble({
           </div>
         )}
 
-        {(onReply || onOpenThread || canReact) && (
+        {(onReply || canReact) && (
           <div
             className={`mt-1 flex items-center gap-3 ${
               isMe ? "justify-end" : "justify-start"
@@ -402,20 +383,6 @@ export default function MessageBubble({
               >
                 <CornerUpLeft size={12} />
                 Reply
-              </button>
-            )}
-            {onOpenThread && (
-              <button
-                type="button"
-                onClick={() => onOpenThread(message)}
-                className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
-              >
-                <MessageSquare size={12} />
-                {replyCount > 0
-                  ? `${replyCount} ${replyCount === 1 ? "reply" : "replies"}`
-                  : message.parentId
-                    ? "View thread"
-                    : "Thread"}
               </button>
             )}
             {canReact && (

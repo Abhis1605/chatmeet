@@ -17,7 +17,6 @@ import { showError } from "@/lib/toast";
 import { toast } from "sonner";
 import MessageList from "@/components/chat/MessageList";
 import ChatInput from "@/components/chat/ChatInput";
-import ThreadPanel from "@/components/chat/ThreadPanel";
 import ChatOptionsMenu from "@/components/chat/ChatOptionsMenu";
 import MessageSearchPanel from "@/components/chat/MessageSearchPanel";
 import PinnedMessagesPanel from "@/components/chat/PinnedMessagesPanel";
@@ -44,6 +43,7 @@ export default function RoomChatWindow({ onBack }: { onBack?: () => void }) {
     data: messagesData,
     fetchNextPage,
     hasNextPage,
+    isLoading: isLoadingMessages,
     isFetchingNextPage,
   } = useMessages(activeRoomChatId);
   const messages = useMemo(
@@ -53,7 +53,7 @@ export default function RoomChatWindow({ onBack }: { onBack?: () => void }) {
         : [],
     [messagesData]
   );
-  const { mutate: sendMessageMutation } = useSendMessage();
+  const { mutateAsync: sendMessageAsync } = useSendMessage();
   const { mutate: markAsRead } = useMarkAsRead();
 
   const [input, setInput] = useState("");
@@ -62,7 +62,7 @@ export default function RoomChatWindow({ onBack }: { onBack?: () => void }) {
   const [openMembers, setOpenMembers] = useState(false);
   const [openShareCode, setOpenShareCode] = useState(false);
   const [replyTo, setReplyTo] = useState<any>(null);
-  const [threadMessage, setThreadMessage] = useState<any>(null);
+  const sendingMessageRef = useRef(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [pinnedOpen, setPinnedOpen] = useState(false);
   const [forwardMessage, setForwardMessage] = useState<any>(null);
@@ -127,7 +127,6 @@ export default function RoomChatWindow({ onBack }: { onBack?: () => void }) {
 
   useEffect(() => {
     setReplyTo(null);
-    setThreadMessage(null);
     setSearchOpen(false);
     setPinnedOpen(false);
     setForwardMessage(null);
@@ -190,30 +189,33 @@ export default function RoomChatWindow({ onBack }: { onBack?: () => void }) {
     };
   }, [socket, selectedRoom?.id]);
 
-  const sendMessage = () => {
-    if (!input.trim() || !socket || !selectedRoom?.id) return;
+  const sendMessage = async () => {
+    if (!input.trim() || !selectedRoom?.id) return;
+    if (sendingMessageRef.current) return;
 
-    sendMessageMutation({
-      chatId: selectedRoom.id,
-      type: "TEXT",
-      content: input,
-      parentId: replyTo?.id,
-    });
-
-    setInput("");
-    persistDraft("");
-    setReplyTo(null);
-    socket.emit("stop-typing", selectedRoom.id);
-
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
+    const content = input;
+    const replyTargetId = replyTo?.id;
+    const chatId = selectedRoom.id;
+    sendingMessageRef.current = true;
+    try {
+      await sendMessageAsync({
+        chatId,
+        type: "TEXT",
+        content,
+        parentId: replyTargetId,
+      });
+      if (input === content) {
+        setInput("");
+        persistDraft("");
+      }
+      if (replyTo?.id === replyTargetId) setReplyTo(null);
+      if (socket?.connected) socket.emit("stop-typing", chatId);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    } catch {
+      // useSendMessage shows a recoverable error; keep the draft for retry.
+    } finally {
+      sendingMessageRef.current = false;
     }
-  };
-
-  const openThread = (message: any) => {
-    // Replies always point at their thread root; opening from a reply should
-    // still show the whole conversation, not an empty child thread.
-    setThreadMessage({ id: message.parentId ?? message.id });
   };
 
   const handleReact = (message: any, emoji: string) => {
@@ -259,7 +261,7 @@ export default function RoomChatWindow({ onBack }: { onBack?: () => void }) {
   };
 
   const uploadAndSend = async (file: File) => {
-    if (!socket || !selectedRoom?.id) return;
+    if (!selectedRoom?.id) return;
 
     try {
       setUploading(true);
@@ -276,16 +278,20 @@ export default function RoomChatWindow({ onBack }: { onBack?: () => void }) {
             ? "AUDIO"
             : "FILE";
 
-      sendMessageMutation({
-        chatId: selectedRoom.id,
-        type,
-        fileUrl: result.serverData.url,
-        fileName: result.name,
-        fileType: result.type,
-        fileSize: result.size,
-        parentId: replyTo?.id,
-      });
-      setReplyTo(null);
+      try {
+        await sendMessageAsync({
+          chatId: selectedRoom.id,
+          type,
+          fileUrl: result.serverData.url,
+          fileName: result.name,
+          fileType: result.type,
+          fileSize: result.size,
+          parentId: replyTo?.id,
+        });
+        setReplyTo(null);
+      } catch {
+        // The uploaded file can be selected again; the mutation shows the send error.
+      }
     } catch (error) {
       console.error("Failed to upload file:", error);
       showError("Could not upload that file. Please try again.");
@@ -418,9 +424,9 @@ export default function RoomChatWindow({ onBack }: { onBack?: () => void }) {
         groupDeliveredCount={groupDeliveredCount}
         onLoadMore={fetchNextPage}
         hasMore={Boolean(hasNextPage)}
+        isLoading={isLoadingMessages}
         isLoadingMore={isFetchingNextPage}
         onReplyMessage={setReplyTo}
-        onOpenThread={openThread}
         onReact={handleReact}
         onPin={handlePin}
         onForward={setForwardMessage}
@@ -501,17 +507,6 @@ export default function RoomChatWindow({ onBack }: { onBack?: () => void }) {
         />
       )}
 
-      {threadMessage && (
-        <ThreadPanel
-          chatId={selectedRoom.id}
-          messageId={threadMessage.id}
-          session={session}
-          isGroup
-          onClose={() => setThreadMessage(null)}
-          onReact={handleReact}
-          onPin={handlePin}
-        />
-      )}
     </div>
   );
 }

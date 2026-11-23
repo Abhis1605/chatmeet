@@ -9,11 +9,11 @@ interface Props {
   isGroup?: boolean;
   onLoadMore?: () => void;
   hasMore?: boolean;
+  isLoading?: boolean;
   isLoadingMore?: boolean;
   onEditMessage?: (message: any) => void;
   onDeleteMessage?: (message: any) => void;
   onReplyMessage?: (message: any) => void;
-  onOpenThread?: (message: any) => void;
   onReact?: (message: any, emoji: string) => void;
   onPin?: (message: any) => void;
   onForward?: (message: any) => void;
@@ -31,11 +31,11 @@ export default function MessageList({
   isGroup = false,
   onLoadMore,
   hasMore = false,
+  isLoading = false,
   isLoadingMore = false,
   onEditMessage,
   onDeleteMessage,
   onReplyMessage,
-  onOpenThread,
   onReact,
   onPin,
   onForward,
@@ -71,13 +71,6 @@ export default function MessageList({
           ? "Delivered"
           : "Sent"
         : null;
-
-  const replyCounts = new Map<string, number>();
-  for (const message of messages) {
-    if (message.parentId) {
-      replyCounts.set(message.parentId, (replyCounts.get(message.parentId) ?? 0) + 1);
-    }
-  }
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
@@ -119,6 +112,14 @@ export default function MessageList({
     return () => observer.disconnect();
   }, [hasMore, onLoadMore, isLoadingMore]);
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-1 items-center justify-center text-muted">
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-border border-t-primary" role="status" aria-label="Loading messages" />
+      </div>
+    );
+  }
+
   if (!messages.length) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted">
@@ -143,19 +144,14 @@ export default function MessageList({
       )}
 
       {messages.map((message) => {
-        const loadedReplyCount = replyCounts.get(message.id) ?? 0;
-        const serverReplyCount =
-          typeof message._count?.replies === "number" ? message._count.replies : 0;
         return (
         <div key={message.id} id={`message-${message.id}`}>
           <MessageBubble
             message={message}
             isMe={message.senderId === session?.user?.id}
             showSender={isGroup}
-            replyCount={Math.max(loadedReplyCount, serverReplyCount)}
             currentUserId={session?.user?.id}
             onReply={onReplyMessage}
-            onOpenThread={onOpenThread}
             onEdit={onEditMessage}
             onDelete={onDeleteMessage}
             onReact={onReact}

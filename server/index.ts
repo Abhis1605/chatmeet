@@ -32,43 +32,60 @@ interface CustomSocket extends Socket {
 }
 
 const activeConnections = new Map<string, Set<string>>()
+const presenceUpdates = new Map<string, Promise<void>>()
 
 const formatLastSeen = (date: Date | string | null | undefined) => {
     if (!date) return null
     return date instanceof Date ? date.toISOString() : new Date(date).toISOString()
 }
 
-// Derives presence from live connections at write time so out-of-order
-// connect/disconnect writes always settle on the real state.
-//
-// User.isOnline / User.lastSeen hold what OTHER users may see, after the
-// user's privacy settings are applied. Every API reads those columns, so
-// filtering here covers all of them.
-const setUserPresence = async (userId: string) => {
-    const connected = (activeConnections.get(userId)?.size ?? 0) > 0
+// Apply presence writes in order per user. Last-seen changes only when the
+// user's final live connection closes; looking up an offline member must not
+// make their timestamp appear newer.
+const setUserPresence = (userId: string, markLastSeen = false) => {
+    const previousUpdate = presenceUpdates.get(userId) ?? Promise.resolve()
+    const update = previousUpdate.catch(() => undefined).then(async () => {
+        const connected = (activeConnections.get(userId)?.size ?? 0) > 0
 
-    const prefs = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { statusPreference: true, showOnlineStatus: true, showLastSeen: true },
+        const prefs = await prisma.user.findUnique({
+            where: { id: userId },
+            select: {
+                statusPreference: true,
+                showOnlineStatus: true,
+                showLastSeen: true,
+                lastSeen: true,
+            },
+        })
+        if (!prefs) return
+
+        // Invisible and Do Not Disturb hide presence. Away remains visible as online.
+        const suppressPresence = prefs.statusPreference === 'INVISIBLE' || prefs.statusPreference === 'DND'
+        const isOnline = connected && !suppressPresence && prefs.showOnlineStatus
+        const lastSeen = suppressPresence || !prefs.showLastSeen
+            ? null
+            : connected
+                ? null
+                : markLastSeen
+                    ? new Date()
+                    : prefs.lastSeen
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: { isOnline, lastSeen },
+        })
+
+        io.emit('user-presence-changed', {
+            userId,
+            isOnline,
+            lastSeen: formatLastSeen(lastSeen),
+        })
     })
-    if (!prefs) return
 
-    // Invisible and Do Not Disturb hide presence. Away remains visible as online.
-    const invisible = prefs.statusPreference === 'INVISIBLE'
-    const suppressPresence = invisible || prefs.statusPreference === 'DND'
-    const isOnline = connected && !suppressPresence && prefs.showOnlineStatus
-    const lastSeen = !connected && !suppressPresence && prefs.showLastSeen ? new Date() : null
-
-    await prisma.user.update({
-        where: { id: userId },
-        data: { isOnline, lastSeen },
-    })
-
-    io.emit('user-presence-changed', {
-        userId,
-        isOnline,
-        lastSeen: formatLastSeen(lastSeen),
-    })
+    presenceUpdates.set(userId, update)
+    void update.finally(() => {
+        if (presenceUpdates.get(userId) === update) presenceUpdates.delete(userId)
+    }).catch(() => undefined)
+    return update
 }
 
 const adapter = new PrismaPg({
@@ -367,7 +384,9 @@ io.on('connection', (socket: CustomSocket) => {
             )]
             if (!otherUserIds.length) return
 
-            await Promise.all(otherUserIds.map((userId) => setUserPresence(userId)))
+            // Wait for in-flight updates, then send stored presence without
+            // changing offline users' timestamps.
+            await Promise.all(otherUserIds.map((userId) => presenceUpdates.get(userId)?.catch(() => undefined)))
 
             const users = await prisma.user.findMany({
                 where: { id: { in: otherUserIds } },
@@ -405,14 +424,21 @@ io.on('connection', (socket: CustomSocket) => {
         }
     })
 
-    socket.on('send-message', async ({ chatId, content, type, fileUrl, fileName, fileType, fileSize, parentId: rawParentId }: { chatId: string, content?: string, type: 'TEXT' | 'IMAGE' | 'FILE' | 'VIDEO' | 'AUDIO', fileUrl?: string, fileName?: string, fileType?: string, fileSize?: number, parentId?: string }) => {
+    socket.on('send-message', async ({ chatId, content, type, fileUrl, fileName, fileType, fileSize, parentId: rawParentId, clientMessageId }: { chatId: string, content?: string, type: 'TEXT' | 'IMAGE' | 'FILE' | 'VIDEO' | 'AUDIO', fileUrl?: string, fileName?: string, fileType?: string, fileSize?: number, parentId?: string, clientMessageId?: string }, acknowledge?: (result: { ok: boolean; error?: string; messageId?: string }) => void) => {
         try {
-            if (!chatId) return
+            if (!chatId) {
+                acknowledge?.({ ok: false, error: 'Chat was not specified.' })
+                return
+            }
 
             const senderId = socket.user?.id
-            if (!senderId) return
+            if (!senderId) {
+                acknowledge?.({ ok: false, error: 'Your session expired. Sign in again.' })
+                return
+            }
 
             if (type === 'TEXT' && !content) {
+                acknowledge?.({ ok: false, error: 'Message cannot be empty.' })
                 return
             }
 
@@ -428,15 +454,13 @@ io.on('connection', (socket: CustomSocket) => {
 
             if (!member) {
                 console.log('Unauthorized message attempt by', socket.user?.id, 'for chat', chatId)
+                acknowledge?.({ ok: false, error: 'You no longer have access to this conversation.' })
                 return
             }
 
             if (member.chat.isGroup && !canSendGroupMessage(member)) {
                 console.log('Read-only group member message attempt by', socket.user?.id, 'for chat', chatId)
-                socket.emit('message-denied', {
-                    chatId,
-                    reason: 'You do not have permission to message in this group.'
-                })
+                acknowledge?.({ ok: false, error: 'You do not have permission to message in this group.' })
                 return
             }
 
@@ -475,7 +499,8 @@ io.on('connection', (socket: CustomSocket) => {
             })
 
             console.log('Message created in DB, emitting...')
-            io.to(chatId).emit('new-message', message)
+            io.to(chatId).emit('new-message', { ...message, clientMessageId })
+            acknowledge?.({ ok: true, messageId: message.id })
 
             // Notify only this chat's participants to refresh their chat list
             const members = await prisma.chatMember.findMany({
@@ -514,6 +539,7 @@ io.on('connection', (socket: CustomSocket) => {
 
         } catch (error) {
             console.error('Socket send-message error:', error)
+            acknowledge?.({ ok: false, error: 'Could not save your message. Please retry.' })
         }
     })
 
@@ -607,7 +633,7 @@ io.on('connection', (socket: CustomSocket) => {
             endCallsForDisconnectedUser(socket.user.id).catch((error) => {
                 console.error('Failed to close calls for disconnected user:', error)
             })
-            setUserPresence(socket.user.id).catch((error) => {
+            setUserPresence(socket.user.id, true).catch((error) => {
                 console.error('Failed to mark user offline:', error)
             })
         } else {
@@ -624,10 +650,11 @@ if (process.env.VERCEL) {
     // during a function cold start.
 } else {
     prisma.user
-        .updateMany({
+        .findMany({
             where: { isOnline: true },
-            data: { isOnline: false, lastSeen: new Date() },
+            select: { id: true },
         })
+        .then((users) => Promise.all(users.map((user) => setUserPresence(user.id, true))))
         .catch((error) => console.error('Failed to reset presence on startup:', error))
         .finally(() => {
             server.listen(PORT, () => {

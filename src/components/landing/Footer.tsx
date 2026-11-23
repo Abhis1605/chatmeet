@@ -10,17 +10,17 @@ const FOOTER_COLUMNS = [
   {
     title: "Product",
     links: [
-      { label: "Problems", href: "#problems" },
-      { label: "Features", href: "#features" },
-      { label: "Spaces", href: "#rooms-group-section"},
-      { label: "How it works", href: "#how-it-works" },
-      { label: "Success stories", href: "#success-stories" },
+      { label: "Problems", href: "/#problems" },
+      { label: "Features", href: "/#features" },
+      { label: "Spaces", href: "/#rooms-group-section"},
+      { label: "How it works", href: "/#how-it-works" },
+      { label: "Success stories", href: "/#success-stories" },
     ],
   },
   {
     title: "Support",
     links: [
-      { label: "FAQ", href: "#faq" },
+      { label: "FAQ", href: "/#faq" },
       { label: "Contact us", href: "/contact" },
       { label: "Help center", href: "/help-center" },
     ],

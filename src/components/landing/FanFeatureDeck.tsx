@@ -28,7 +28,7 @@ const FEATURES: FeatureCardData[] = [
   },
   {
     title: "Group Chats",
-    description: "Keep the room together with shared updates, organized threads, and real-time replies.",
+    description: "Keep the room together with shared updates and direct replies to messages.",
     icon: Users,
   },
   {

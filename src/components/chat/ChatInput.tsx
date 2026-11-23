@@ -43,12 +43,20 @@ export default function ChatInput({
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messageInputRef = useRef<HTMLTextAreaElement>(null);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const discardRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    const textarea = messageInputRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 128)}px`;
+  }, [input]);
 
   const cleanupRecorder = () => {
     if (timerRef.current) {
@@ -291,17 +299,21 @@ export default function ChatInput({
             )}
 
             {/* Input */}
-            <input
+            <textarea
+              ref={messageInputRef}
               value={input}
               onChange={(event) => onChange(event.target.value)}
               disabled={disabled}
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
+                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                  e.preventDefault();
                   onSend();
                 }
               }}
+              rows={1}
               placeholder={placeholder}
-              className="min-w-0 flex-1 rounded-full bg-surface-soft px-3 py-3 text-foreground outline-none border border-border focus:border-primary disabled:cursor-not-allowed disabled:text-muted sm:px-5"
+              aria-label={`${placeholder} Press Ctrl+Enter to send`}
+              className="min-h-11 max-h-32 min-w-0 flex-1 resize-none overflow-y-auto rounded-2xl bg-surface-soft px-3 py-3 text-foreground outline-none border border-border focus:border-primary disabled:cursor-not-allowed disabled:text-muted sm:px-5"
             />
 
             {/* Voice note */}
@@ -332,6 +344,9 @@ export default function ChatInput({
           </>
         )}
       </div>
+      <p className="px-4 pb-2 text-[10px] text-muted sm:px-5">
+        Enter for a new line · Ctrl/⌘+Enter to send
+      </p>
     </div>
   );
 }
