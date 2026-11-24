@@ -22,6 +22,7 @@ export default function VideoCallMainPanel() {
   const { mutate: startCallMutation, isPending: isStarting } = useStartCall();
 
   const [joinState, setJoinState] = useState<{
+    sessionId: string;
     token: string;
     userName: string;
     isStarter: boolean;
@@ -29,6 +30,10 @@ export default function VideoCallMainPanel() {
   } | null>(null);
   const [joinLoading, setJoinLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const getErrorMessage = (cause: unknown, fallback: string) =>
+    (cause as { response?: { data?: { error?: string } } })?.response?.data
+      ?.error ?? fallback;
 
   const resetJoinState = () => {
     setJoinState(null);
@@ -40,9 +45,9 @@ export default function VideoCallMainPanel() {
     setError(null);
     try {
       const { token, userName, mediaType } = await getCallToken(sessionId);
-      setJoinState({ token, userName, isStarter, mediaType });
-    } catch {
-      setError("Could not join the call. Please try again.");
+      setJoinState({ sessionId, token, userName, isStarter, mediaType });
+    } catch (cause) {
+      setError(getErrorMessage(cause, "Could not join the call. Please try again."));
     } finally {
       setJoinLoading(false);
     }
@@ -57,7 +62,8 @@ export default function VideoCallMainPanel() {
         onSuccess: (result) => {
           joinSession(result.callSessionId, true);
         },
-        onError: () => setError("Could not start the call. Please try again."),
+        onError: (cause) =>
+          setError(getErrorMessage(cause, "Could not start the call. Please try again.")),
       }
     );
   };
@@ -79,7 +85,7 @@ export default function VideoCallMainPanel() {
   if (joinState) {
     return (
       <CallRoomView
-        sessionId={activeCall?.id ?? ""}
+        sessionId={joinState.sessionId}
         token={joinState.token}
         userName={joinState.userName}
         isStarter={joinState.isStarter}

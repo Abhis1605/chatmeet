@@ -9,6 +9,14 @@ import { SDK as HMSSDK } from "@100mslive/server-sdk";
 const HMS_ACCESS_KEY = process.env.HMS_ACCESS_KEY;
 const HMS_SECRET = process.env.HMS_SECRET;
 const HMS_TEMPLATE_ID = process.env.HMS_TEMPLATE_ID;
+// The local Windows clock is currently ~20s ahead of 100ms. The server SDK's
+// default token buffer is only 10s, so issue tokens with a wider validity
+// margin until the host clock can be synchronized.
+const HMS_TOKEN_CLOCK_BUFFER_SECONDS = 60;
+
+function getBufferedTokenIssuedAt(): number {
+  return Math.floor(Date.now() / 1000) - HMS_TOKEN_CLOCK_BUFFER_SECONDS;
+}
 
 function assertEnv() {
   if (!HMS_ACCESS_KEY || !HMS_SECRET || !HMS_TEMPLATE_ID) {
@@ -33,6 +41,12 @@ function getHmsClient(): HMSSDK {
  */
 export async function createHmsRoom(name: string): Promise<string> {
   const hms = getHmsClient();
+  // APIService obtains its management token from this cache before calling
+  // rooms.create(). Seed it with the larger clock buffer first.
+  await hms.auth.getManagementToken({
+    forceNew: true,
+    issuedAt: getBufferedTokenIssuedAt(),
+  });
   const room = await hms.rooms.create({
     name,
     template_id: HMS_TEMPLATE_ID,
@@ -58,6 +72,7 @@ export async function generateHmsAuthToken({
     roomId: hmsRoomId,
     userId,
     role,
+    issuedAt: getBufferedTokenIssuedAt(),
   });
   return token;
 }

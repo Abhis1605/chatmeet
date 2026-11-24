@@ -14,6 +14,7 @@ import {
 import type { HMSPeer } from "@100mslive/react-sdk";
 import { Mic, MicOff, Video, VideoOff, PhoneOff, LogOut, MonitorUp, MonitorStop } from "lucide-react";
 import { useEndCall } from "@/hooks/mutations/use-end-call";
+import { leaveCall } from "@/services/call.service";
 import type { CallMediaType } from "@/types/dto/call.dto";
 
 interface CallRoomViewProps {
@@ -123,6 +124,7 @@ function CallRoomInner({
   const { mutate: endCallMutation, isPending: isEnding } = useEndCall();
 
   const hasJoinedRef = useRef(false);
+  const joinPromiseRef = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
     if (hasJoinedRef.current) return;
@@ -130,7 +132,7 @@ function CallRoomInner({
 
     let cancelled = false;
 
-    (async () => {
+    const joinPromise = (async () => {
       if (pendingLeave) {
         await pendingLeave;
       }
@@ -149,18 +151,39 @@ function CallRoomInner({
         });
       } catch (error) {
         console.error("Failed to join call:", error);
-        setJoinError("Could not join the call. Please try again.");
+        const message =
+          error instanceof Error && error.message
+            ? error.message
+            : "Could not join the call. Check the call settings and try again.";
+        setJoinError(message);
       }
     })();
+    joinPromiseRef.current = joinPromise;
 
     return () => {
       cancelled = true;
-      pendingLeave = hmsActions.leave().catch(() => {});
+      // Wait for join() to settle before leaving. Calling leave() while the SDK
+      // is still joining can race device acquisition and leave its room state
+      // unusable for the next call.
+      pendingLeave = (async () => {
+        await joinPromiseRef.current?.catch(() => {});
+        await hmsActions.leave().catch(() => {});
+      })();
+      // Keep the app's participant state in sync when the call view is closed
+      // by navigation or by the join error's Close button.
+      void leaveCall(sessionId).catch((error) => {
+        console.warn("Could not update call participant status:", error);
+      });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleLeave = async () => {
+    try {
+      await leaveCall(sessionId);
+    } catch (error) {
+      console.warn("Could not update call participant status:", error);
+    }
     pendingLeave = hmsActions.leave().catch(() => {});
     await pendingLeave;
     onLeave();
@@ -181,7 +204,7 @@ function CallRoomInner({
       <div className="p-6 text-center text-error">
         {joinError}
         <button
-          onClick={onLeave}
+          onClick={handleLeave}
           className="mt-4 block mx-auto btn-primary py-1.5 px-4 text-sm"
         >
           Close

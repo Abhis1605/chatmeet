@@ -4,7 +4,26 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 import { createHmsRoom, discardHmsRoom } from "@/lib/hms";
 import { notifySocket } from "@/lib/socket-notify";
 
+function describeError(error: unknown): string {
+    if (error instanceof Error) {
+        return `${error.name}: ${error.message}`;
+    }
+
+    if (typeof error === "object" && error !== null) {
+        const details: string[] = [];
+        if ("name" in error && typeof error.name === "string") details.push(error.name);
+        if ("code" in error && (typeof error.code === "string" || typeof error.code === "number")) {
+            details.push(`code ${error.code}`);
+        }
+        if ("message" in error && typeof error.message === "string") details.push(error.message);
+        if (details.length > 0) return details.join(": ");
+    }
+
+    return typeof error === "string" ? error : "Unknown error";
+}
+
 export async function POST(req: Request) {
+    let stage = "configuration";
     try {
         if (!process.env.HMS_ACCESS_KEY || !process.env.HMS_SECRET || !process.env.HMS_TEMPLATE_ID) {
             return Response.json({
@@ -12,12 +31,14 @@ export async function POST(req: Request) {
             }, { status: 503 });
         }
 
+        stage = "authentication";
         const session = await getServerSession(authOptions)
 
         if (!session?.user?.id) {
             return Response.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
+        stage = "request validation";
         const body = await req.json()
         const { chatId, type: rawType, mediaType: rawMediaType } = body
         const callType: string = rawType === 'GROUP' ? 'GROUP' : 'ONE_TO_ONE'
@@ -28,6 +49,7 @@ export async function POST(req: Request) {
         }
 
         // Verify requester is a member of the chat
+        stage = "chat membership lookup";
         const member = await prisma.chatMember.findFirst({
             where: { chatId, userId: session.user.id },
         })
@@ -40,21 +62,26 @@ export async function POST(req: Request) {
         const createOrGetCallSession = () => prisma.$transaction(async (tx) => {
             // Serialize starts for this chat across all app instances. The
             // lock is held until the session and participants are committed.
-            await tx.$queryRaw`SELECT pg_advisory_xact_lock(0, hashtext(${chatId}))`;
+            stage = "call-session lock";
+            await tx.$queryRaw`SELECT pg_advisory_xact_lock(0, hashtext(${chatId}))::text`;
 
+            stage = "existing call lookup";
             const existing = await tx.callSession.findFirst({
                 where: { chatId, status: 'ACTIVE' },
             });
             if (existing) return { callSession: existing, otherUserIds: [], created: false };
 
+            stage = "chat participant lookup";
             const allMembers = await tx.chatMember.findMany({
                 where: { chatId },
                 select: { userId: true },
             });
 
+            stage = "100ms room creation";
             const hmsRoomId = await createHmsRoom(`chat-${chatId}-${Date.now()}`);
             createdHmsRoomId = hmsRoomId;
 
+            stage = "call-session database write";
             const callSession = await tx.callSession.create({
                 data: {
                     chatId,
@@ -82,6 +109,7 @@ export async function POST(req: Request) {
 
         let result: Awaited<ReturnType<typeof createOrGetCallSession>>;
         try {
+            stage = "call-session transaction";
             result = await createOrGetCallSession();
         } catch (error) {
             if (createdHmsRoomId) {
@@ -96,6 +124,7 @@ export async function POST(req: Request) {
 
         const { callSession } = result;
         if (result.created) {
+            stage = "incoming-call notification";
             await notifySocket(
                 'call-incoming',
                 {
@@ -119,7 +148,10 @@ export async function POST(req: Request) {
             mediaType: callSession.mediaType,
         })
     } catch (error) {
-        console.error(error)
-        return Response.json({ error: 'Server error' }, { status: 500 })
+        console.error(`POST /api/call/start failed during ${stage}:`, error)
+        const message = process.env.NODE_ENV === "development"
+            ? `Call start failed during ${stage}: ${describeError(error)}`
+            : `Call start failed during ${stage}. Check server logs.`
+        return Response.json({ error: message }, { status: 500 })
     }
 }
